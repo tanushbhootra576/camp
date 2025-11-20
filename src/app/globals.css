@@ -3,6 +3,11 @@
   --foreground: #171717;
 }
 
+[data-mantine-color-scheme="dark"] body {
+  background-color: #000000;
+  --mantine-color-body: #000000;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

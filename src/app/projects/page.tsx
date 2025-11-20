@@ -1,0 +1,216 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Navbar } from '@/components/Navbar';
+import { Container, Title, Button, Group, Card, Badge, Text, SimpleGrid, TextInput, Modal, Textarea, LoadingOverlay, Image } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { useAuth } from '@/components/AuthProvider';
+import { IconBrandGithub, IconExternalLink, IconPlus, IconStar } from '@tabler/icons-react';
+
+interface Project {
+    _id: string;
+    title: string;
+    description: string;
+    techStack: string[];
+    demoLink?: string;
+    repoLink?: string;
+    images: string[];
+    isFeatured: boolean;
+}
+
+export default function ProjectsPage() {
+    const { user, profile } = useAuth();
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const [opened, { open, close }] = useDisclosure(false);
+
+    // Form state
+    const [newProject, setNewProject] = useState({
+        title: '',
+        description: '',
+        techStack: '',
+        demoLink: '',
+        repoLink: '',
+        imageUrl: '',
+    });
+
+    const fetchProjects = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/projects');
+            const data = await res.json();
+            setProjects(data.projects);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProjects();
+    }, []);
+
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!profile) {
+            alert('Please complete your profile before submitting a project.');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const res = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newProject,
+                    techStack: newProject.techStack.split(',').map(t => t.trim()).filter(t => t),
+                    images: newProject.imageUrl ? [newProject.imageUrl] : [],
+                    teamMembers: [profile._id],
+                }),
+            });
+
+            if (res.ok) {
+                close();
+                fetchProjects();
+                setNewProject({ title: '', description: '', techStack: '', demoLink: '', repoLink: '', imageUrl: '' });
+            } else {
+                alert('Failed to submit project');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <>
+            <Navbar />
+            <Container size="lg" py="xl">
+                <Group justify="space-between" mb="xl">
+                    <Title>Campus Projects</Title>
+                    {user && (
+                        <Button leftSection={<IconPlus size={14} />} onClick={open}>
+                            Submit Project
+                        </Button>
+                    )}
+                </Group>
+
+                <div style={{ position: 'relative', minHeight: 200 }}>
+                    <LoadingOverlay visible={loading} />
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+                        {projects.map((project) => (
+                            <Card key={project._id} shadow="sm" padding="lg" radius="md" withBorder>
+                                <Card.Section>
+                                    <Image
+                                        src={project.images[0] || "https://placehold.co/600x400?text=Project"}
+                                        height={160}
+                                        alt={project.title}
+                                    />
+                                </Card.Section>
+
+                                <Group justify="space-between" mt="md" mb="xs">
+                                    <Text fw={500}>{project.title}</Text>
+                                    {project.isFeatured && (
+                                        <Badge color="yellow" leftSection={<IconStar size={12} />}>Featured</Badge>
+                                    )}
+                                </Group>
+
+                                <Text size="sm" c="dimmed" lineClamp={3}>
+                                    {project.description}
+                                </Text>
+
+                                <Group mt="md" gap="xs">
+                                    {project.techStack.map(tech => (
+                                        <Badge key={tech} variant="outline" size="sm" color="gray">{tech}</Badge>
+                                    ))}
+                                </Group>
+
+                                <Group mt="md" grow>
+                                    {project.repoLink && (
+                                        <Button
+                                            component="a"
+                                            href={project.repoLink}
+                                            target="_blank"
+                                            variant="default"
+                                            leftSection={<IconBrandGithub size={16} />}
+                                        >
+                                            Code
+                                        </Button>
+                                    )}
+                                    {project.demoLink && (
+                                        <Button
+                                            component="a"
+                                            href={project.demoLink}
+                                            target="_blank"
+                                            variant="light"
+                                            leftSection={<IconExternalLink size={16} />}
+                                        >
+                                            Demo
+                                        </Button>
+                                    )}
+                                </Group>
+                            </Card>
+                        ))}
+                    </SimpleGrid>
+                    {!loading && projects.length === 0 && (
+                        <Text ta="center" c="dimmed" mt="xl">No projects found.</Text>
+                    )}
+                </div>
+            </Container>
+
+            <Modal opened={opened} onClose={close} title="Submit Project">
+                <TextInput
+                    label="Title"
+                    required
+                    mb="md"
+                    value={newProject.title}
+                    onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                />
+                <TextInput
+                    label="Tech Stack"
+                    placeholder="React, Node.js, MongoDB"
+                    required
+                    mb="md"
+                    value={newProject.techStack}
+                    onChange={(e) => setNewProject({ ...newProject, techStack: e.target.value })}
+                />
+                <TextInput
+                    label="Repository Link"
+                    placeholder="https://github.com/..."
+                    mb="md"
+                    value={newProject.repoLink}
+                    onChange={(e) => setNewProject({ ...newProject, repoLink: e.target.value })}
+                />
+                <TextInput
+                    label="Demo Link"
+                    placeholder="https://..."
+                    mb="md"
+                    value={newProject.demoLink}
+                    onChange={(e) => setNewProject({ ...newProject, demoLink: e.target.value })}
+                />
+                <TextInput
+                    label="Image URL"
+                    placeholder="https://..."
+                    mb="md"
+                    value={newProject.imageUrl}
+                    onChange={(e) => setNewProject({ ...newProject, imageUrl: e.target.value })}
+                />
+                <Textarea
+                    label="Description"
+                    required
+                    mb="xl"
+                    minRows={3}
+                    value={newProject.description}
+                    onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                />
+                <Button fullWidth onClick={handleSubmit} loading={submitting}>Submit Project</Button>
+            </Modal>
+        </>
+    );
+}

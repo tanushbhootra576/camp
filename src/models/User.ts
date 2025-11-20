@@ -1,0 +1,50 @@
+import mongoose, { Schema, Document, Model } from 'mongoose';
+
+export interface IUser extends Document {
+    firebaseUid: string;
+    email: string;
+    name: string;
+    role: 'student' | 'admin' | 'alumni';
+    branch?: string;
+    year?: number;
+    bio?: string;
+    skills: string[];
+    interests: string[];
+    socialLinks: {
+        github?: string;
+        linkedin?: string;
+        portfolio?: string;
+    };
+    profileLocked: boolean;
+    createdAt: Date;
+}
+
+const UserSchema: Schema<IUser> = new Schema({
+    firebaseUid: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    role: {
+        type: String,
+        enum: ['student', 'admin', 'alumni'],
+        default: 'student'
+    },
+    branch: { type: String },
+    year: { type: Number },
+    bio: { type: String },
+    skills: [{ type: String }],
+    interests: [{ type: String }],
+    socialLinks: {
+        github: String,
+        linkedin: String,
+        portfolio: String,
+    },
+    profileLocked: {
+        type: Boolean,
+        default: false,
+    },
+    createdAt: { type: Date, default: Date.now },
+});
+
+const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+
+export default User;
