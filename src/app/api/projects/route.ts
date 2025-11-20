@@ -6,7 +6,9 @@ import User from '@/models/User';
 export async function GET(req: NextRequest) {
     try {
         await dbConnect();
-        const projects = await Project.find().sort({ isFeatured: -1, createdAt: -1 });
+        const projects = await Project.find()
+            .sort({ isFeatured: -1, createdAt: -1 })
+            .populate('teamMembers', 'firebaseUid name email');
         return NextResponse.json({ projects });
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

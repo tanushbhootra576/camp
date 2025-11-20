@@ -4,6 +4,8 @@ import "./globals.css";
 import '@mantine/core/styles.css';
 import React from 'react';
 import { MantineProvider, ColorSchemeScript } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import { QueryProvider } from '@/components/QueryProvider';
 import { theme } from '../theme';
 
 const geistSans = Geist({
@@ -35,9 +37,12 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider theme={theme} defaultColorScheme="dark">
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <Notifications position="top-right" />
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </QueryProvider>
         </MantineProvider>
       </body>
     </html>

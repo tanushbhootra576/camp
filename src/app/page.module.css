@@ -1,141 +1,101 @@
-.page {
-  --background: #fafafa;
-  --foreground: #fff;
+/* Landing page styles */
 
-  --text-primary: #000;
-  --text-secondary: #666;
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
-  display: flex;
-  min-height: 100vh;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-geist-sans);
-  background-color: var(--background);
+:root {
+  --hero-bg: radial-gradient(1200px 600px at 20% -10%, rgba(92, 124, 250, 0.28), transparent 60%),
+    radial-gradient(1000px 500px at 90% 10%, rgba(186, 104, 200, 0.24), transparent 60%);
 }
 
-.main {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  max-width: 800px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  background-color: var(--foreground);
-  padding: 120px 60px;
+.hero {
+  position: relative;
+  /* padding: 96px 0 72px; */
+  overflow: hidden;
+  background: var(--hero-bg);
 }
 
-.intro {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  gap: 24px;
+.spotlight {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 60%;
+  pointer-events: none;
+  background: radial-gradient(600px 300px at 50% 20%, rgba(255, 255, 255, 0.12), transparent 60%);
+  filter: blur(20px);
 }
 
-.intro h1 {
-  max-width: 320px;
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
-  text-wrap: balance;
-  color: var(--text-primary);
+.glow {
+  position: absolute;
+  inset: -10% -10% -20% -10%;
+  pointer-events: none;
+  background: radial-gradient(600px 400px at 80% 0%, rgba(100, 181, 246, 0.12), transparent 60%),
+    radial-gradient(700px 300px at 10% 10%, rgba(240, 98, 146, 0.12), transparent 60%);
+  filter: blur(24px);
 }
 
-.intro p {
-  max-width: 440px;
-  font-size: 18px;
-  line-height: 32px;
-  text-wrap: balance;
-  color: var(--text-secondary);
+.headline {
+  font-size: clamp(32px, 6vw, 64px);
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
-.intro a {
-  font-weight: 500;
-  color: var(--text-primary);
+.stats {
+  margin-top: 8px;
 }
 
-.ctas {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: 440px;
-  gap: 16px;
-  font-size: 14px;
+.section {
+  padding: 56px 0;
 }
 
-.ctas a {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
+.sectionAlt {
+  padding: 64px 0;
+  background:
+    radial-gradient(400px 120px at 30% 0%, rgba(99, 102, 241, 0.08), transparent 60%),
+    radial-gradient(500px 140px at 80% 10%, rgba(236, 72, 153, 0.08), transparent 60%);
 }
 
-a.primary {
-  background: var(--text-primary);
-  color: var(--background);
-  gap: 8px;
+.highlight {
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-a.secondary {
-  border-color: var(--button-secondary-border);
+.highlight:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
+.ctaWrap {
+  padding: 64px 0 96px;
+  background: radial-gradient(800px 240px at 50% 0%, rgba(124, 58, 237, 0.15), transparent 60%);
+}
+
+.cta {
+  backdrop-filter: saturate(140%) blur(6px);
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 72px 0 56px;
   }
 
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
+  .section {
+    padding: 40px 0;
+  }
+
+  .sectionAlt {
+    padding: 48px 0;
   }
 }
 
-@media (max-width: 600px) {
-  .main {
-    padding: 48px 24px;
+@media (prefers-color-scheme: light) {
+  .glow {
+    filter: blur(22px) brightness(1.2);
   }
 
-  .intro {
-    gap: 16px;
-  }
-
-  .intro h1 {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
+  .highlight:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-
-  .page {
-    --background: #000;
-    --foreground: #000;
-
-    --text-primary: #ededed;
-    --text-secondary: #999;
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
+  .glow {
+    filter: blur(22px) brightness(0.9);
   }
 }

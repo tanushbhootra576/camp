@@ -25,7 +25,7 @@ export function Navbar() {
     };
 
     return (
-        <Box pb={120}>
+        <Box >
             <header className={classes.header}>
                 <Container size="xl" className={classes.inner}>
                     <Group justify="space-between" h="100%" wrap="nowrap">
@@ -128,7 +128,7 @@ export function Navbar() {
                 opened={drawerOpened}
                 onClose={closeDrawer}
                 size="100%"
-                padding="md"
+                 padding="md"
                 title="Navigation"
                 hiddenFrom="sm"
                 zIndex={1000000}

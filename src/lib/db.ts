@@ -3,9 +3,8 @@ import mongoose from 'mongoose';
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-    throw new Error(
-        'Please define the MONGODB_URI environment variable inside .env.local'
-    );
+    // Do not throw at module load; defer error to connection time for clearer API responses.
+    console.error('[db] MONGODB_URI env var not set. Define it in .env.local');
 }
 
 /**
@@ -34,12 +33,17 @@ async function dbConnect() {
     }
 
     if (!cached.promise) {
+        if (!MONGODB_URI) {
+            throw new Error('MONGODB_URI missing');
+        }
         const opts = {
             bufferCommands: false,
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-            return mongoose;
+        cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongooseInstance) => {
+            // Disable strictPopulate to allow nested subdocument populate paths without explicit schema paths in older definitions.
+            mongooseInstance.set('strictPopulate', false);
+            return mongooseInstance;
         });
     }
 

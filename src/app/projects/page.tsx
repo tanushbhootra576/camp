@@ -7,6 +7,13 @@ import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
 import { IconBrandGithub, IconExternalLink, IconPlus, IconStar } from '@tabler/icons-react';
 
+interface ProjectTeamMember {
+    _id: string;
+    firebaseUid?: string;
+    name?: string;
+    email?: string;
+}
+
 interface Project {
     _id: string;
     title: string;
@@ -16,6 +23,7 @@ interface Project {
     repoLink?: string;
     images: string[];
     isFeatured: boolean;
+    teamMembers?: ProjectTeamMember[];
 }
 
 export default function ProjectsPage() {
@@ -53,6 +61,8 @@ export default function ProjectsPage() {
     }, []);
 
     const [submitting, setSubmitting] = useState(false);
+    const [contactOpened, setContactOpened] = useState(false);
+    const [contactMember, setContactMember] = useState<ProjectTeamMember | null>(null);
 
     const handleSubmit = async () => {
         if (!profile) {
@@ -155,6 +165,18 @@ export default function ProjectsPage() {
                                         </Button>
                                     )}
                                 </Group>
+                                {project.teamMembers && project.teamMembers.length > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        mt="sm"
+                                        onClick={() => {
+                                            setContactMember(project.teamMembers![0]);
+                                            setContactOpened(true);
+                                        }}
+                                    >
+                                        {project.teamMembers[0].name ? `Contact ${project.teamMembers[0].name}` : 'Contact Author'}
+                                    </Button>
+                                )}
                             </Card>
                         ))}
                     </SimpleGrid>
@@ -210,6 +232,40 @@ export default function ProjectsPage() {
                     onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
                 />
                 <Button fullWidth onClick={handleSubmit} loading={submitting}>Submit Project</Button>
+            </Modal>
+            <Modal opened={contactOpened} onClose={() => setContactOpened(false)} title={contactMember?.name ? `Contact ${contactMember.name}` : 'Contact Author'} centered>
+                {contactMember?.email ? (
+                    <SimpleGrid cols={1} spacing="sm">
+                        <Button
+                            component="a"
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${contactMember.email}&su=${encodeURIComponent('Regarding your project')}`}
+                            target="_blank"
+                            variant="light"
+                            color="red"
+                        >Gmail</Button>
+                        <Button
+                            component="a"
+                            href={`https://outlook.office.com/mail/deeplink/compose?to=${contactMember.email}&subject=${encodeURIComponent('Regarding your project')}`}
+                            target="_blank"
+                            variant="light"
+                            color="blue"
+                        >Outlook</Button>
+                        <Button
+                            component="a"
+                            href={`https://compose.mail.yahoo.com/?to=${contactMember.email}&subject=${encodeURIComponent('Regarding your project')}`}
+                            target="_blank"
+                            variant="light"
+                            color="violet"
+                        >Yahoo Mail</Button>
+                        <Button
+                            component="a"
+                            href={`mailto:${contactMember.email}?subject=${encodeURIComponent('Regarding your project')}`}
+                            variant="default"
+                        >Default Mail App</Button>
+                    </SimpleGrid>
+                ) : (
+                    <Text size="sm" c="dimmed">Email not available for this author.</Text>
+                )}
             </Modal>
         </>
     );
