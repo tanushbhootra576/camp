@@ -5,7 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { Container, Title, Button, Group, Card, Badge, Text, SimpleGrid, TextInput, Select, Modal, Textarea, LoadingOverlay, Avatar, Collapse, Divider, Alert, Pagination, Tabs, ThemeIcon } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
-import { IconMessage, IconPlus, IconThumbUp, IconCode, IconBrain, IconDatabase, IconDeviceDesktop, IconDeviceMobile, IconLock, IconCloud, IconServer, IconCurrencyBitcoin, IconCheck } from '@tabler/icons-react';
+import { IconMessage, IconPlus, IconThumbUp, IconCode, IconBrain, IconDatabase, IconDeviceDesktop, IconDeviceMobile, IconLock, IconCloud, IconServer, IconCurrencyBitcoin, IconCheck, IconEdit } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
@@ -17,6 +17,7 @@ interface Thread {
     category: string;
     tags: string[];
     authorId: {
+        _id: string;
         name: string;
     };
     createdAt: string;
@@ -74,6 +75,27 @@ export default function DiscussionsPage() {
     const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
     const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
     const [mobileCategoryOpened, { toggle: toggleMobileCategory }] = useDisclosure(false);
+
+    // Edit thread modal
+    const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+    const [editingThread, setEditingThread] = useState<Thread | null>(null);
+    const [editForm, setEditForm] = useState({
+        title: '',
+        content: '',
+        category: '',
+        tags: '',
+    });
+
+    const handleEditClick = (thread: Thread) => {
+        setEditingThread(thread);
+        setEditForm({
+            title: thread.title,
+            content: thread.content,
+            category: thread.category,
+            tags: thread.tags.join(', '),
+        });
+        openEdit();
+    };
 
     const sanitize = (raw: any): Thread => ({
         _id: String(raw._id),
@@ -228,6 +250,36 @@ export default function DiscussionsPage() {
         }
     });
 
+    // Mutation: update thread
+    const updateThreadMutation = useMutation({
+        mutationFn: async () => {
+            if (!profile || !editingThread) throw new Error('Not authenticated or no thread selected');
+            const res = await fetch(`/api/discussions/${editingThread._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: profile._id,
+                    title: editForm.title,
+                    content: editForm.content,
+                    category: editForm.category,
+                    tags: editForm.tags.split(',').map(t => t.trim()).filter(t => t),
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || data.error || 'Failed to update discussion');
+            return data;
+        },
+        onSuccess: () => {
+            notifications.show({ color: 'green', title: 'Discussion Updated', message: 'Your discussion has been updated.' });
+            closeEdit();
+            setEditingThread(null);
+            queryClient.invalidateQueries({ queryKey: ['threads'] });
+        },
+        onError: (e: any) => {
+            notifications.show({ color: 'red', title: 'Update Failed', message: e.message || 'Unable to update discussion.' });
+        }
+    });
+
     const toggleComments = (id: string) => {
         setOpenComments(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -241,11 +293,11 @@ export default function DiscussionsPage() {
                         <Title>Discussions</Title>
                         {profile && (
                             <Text size="xs" c="dimmed" mt={4}>
-                                Posting as: <Text span fw={600}>{profile.name}</Text> ({profile.role === 'alumni' ? 'Alumni' : profile.role === 'admin' ? 'Admin' : 'Student'})
+                                Logged in as: <Text span fw={600}>{profile.name}</Text> ({profile.role === 'alumni' ? 'Alumni' : profile.role === 'admin' ? 'Admin' : 'Student'})
                             </Text>
                         )}
                     </div>
-                    {user && (
+                    {user && isAlumni && (
                         <Button leftSection={<IconPlus size={14} />} onClick={open}>
                             New Discussion
                         </Button>
@@ -362,6 +414,17 @@ export default function DiscussionsPage() {
                                                 >
                                                     {thread.comments?.length || 0}
                                                 </Button>
+                                                {profile && (String(profile._id) === String(thread.authorId._id) || profile.role === 'admin') && (
+                                                    <Button
+                                                        variant="subtle"
+                                                        color="gray"
+                                                        size="xs"
+                                                        leftSection={<IconEdit size={16} />}
+                                                        onClick={(e) => { e.stopPropagation(); handleEditClick(thread); }}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                )}
                                             </Group>
                                         </Group>
 
@@ -504,6 +567,50 @@ export default function DiscussionsPage() {
                         disabled={RESTRICTED_CATEGORIES.includes(newThread.category) && !isAlumni}
                     >
                         Post Discussion
+                    </Button>
+                </Group>
+            </Modal>
+
+            <Modal opened={editOpened} onClose={closeEdit} title="Edit Discussion" size="lg">
+                <TextInput
+                    label="Title"
+                    placeholder="What's on your mind?"
+                    required
+                    mb="md"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                />
+                <Select
+                    label="Category"
+                    data={CATEGORIES.map(c => ({ value: c.value, label: c.label }))}
+                    required
+                    mb="md"
+                    value={editForm.category}
+                    onChange={(val) => setEditForm({ ...editForm, category: val as any })}
+                />
+                <Textarea
+                    label="Content"
+                    placeholder="Share your thoughts, questions, or guidance..."
+                    required
+                    mb="md"
+                    minRows={6}
+                    value={editForm.content}
+                    onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                />
+                <TextInput
+                    label="Tags"
+                    placeholder="e.g. react, career, internship (comma separated)"
+                    mb="xl"
+                    value={editForm.tags}
+                    onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                />
+                <Group justify="flex-end">
+                    <Button variant="default" onClick={closeEdit}>Cancel</Button>
+                    <Button 
+                        loading={updateThreadMutation.isPending} 
+                        onClick={() => updateThreadMutation.mutate()}
+                    >
+                        Update Discussion
                     </Button>
                 </Group>
             </Modal>

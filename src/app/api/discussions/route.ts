@@ -105,23 +105,19 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { authorId, category } = body;
 
-        // Check for restricted categories
-        const restrictedCategories = ['SWE', 'AI', 'ML', 'DATASCIENCE', 'WEBDEV', 'APPDEV', 'CYBERSECURITY', 'BLOCKCHAIN', 'CLOUD', 'DEVOPS'];
-        
-        if (restrictedCategories.includes(category)) {
-            const user = await User.findById(authorId);
-            if (!user) {
-                return NextResponse.json({ error: 'User not found' }, { status: 404 });
-            }
+        // Check permissions for ALL categories
+        const user = await User.findById(authorId);
+        if (!user) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
 
-            const isAuthorized = user.role === 'alumni' || user.role === 'admin';
-            
-            if (!isAuthorized) {
-                return NextResponse.json({ 
-                    error: 'Permission denied', 
-                    detail: 'Only Alumni (Passouts) can post in this category to guide students.' 
-                }, { status: 403 });
-            }
+        const isAuthorized = user.role === 'alumni' || user.role === 'admin';
+        
+        if (!isAuthorized) {
+            return NextResponse.json({ 
+                error: 'Permission denied', 
+                detail: 'Only Alumni and Admins can post discussions.' 
+            }, { status: 403 });
         }
 
         const thread = await DiscussionThread.create(body);

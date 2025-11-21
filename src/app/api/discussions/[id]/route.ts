@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import DiscussionThread from '@/models/DiscussionThread';
+import User from '@/models/User';
 import mongoose from 'mongoose';
 
 function normalize(thread: any) {
@@ -51,38 +52,61 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     await dbConnect();
     mongoose.set('strictPopulate', false);
     const body = await req.json();
-    const { userId } = body;
+    const { userId, title, content, category, tags } = body;
+    
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
     }
+    
     const resolved = 'then' in context.params ? await context.params : context.params;
-    console.log('[PATCH /api/discussions/:id] incoming id', resolved.id);
     const thread = await DiscussionThread.findById(resolved.id);
-    if (!thread) {
-      console.warn('[PATCH /api/discussions/:id] thread not found for id', resolved.id);
-    }
+    
     if (!thread) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    const hasUpvoted = thread.upvotes.some((u: unknown) => String(u) === userId);
-    if (hasUpvoted) {
-      thread.upvotes = thread.upvotes.filter((u: unknown) => String(u) !== userId);
+
+    // Check if this is an edit operation (presence of content fields)
+    if (title || content || category || tags) {
+        const user = await User.findById(userId);
+        const isAuthor = String(thread.authorId) === userId;
+        const isAdmin = user?.role === 'admin';
+
+        if (!isAuthor && !isAdmin) {
+            return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+        }
+
+        if (title) thread.title = title;
+        if (content) thread.content = content;
+        if (category) thread.category = category;
+        if (tags) thread.tags = tags;
+        
+        await thread.save();
     } else {
-      thread.upvotes.push(userId);
+        // Upvote toggle logic
+        const hasUpvoted = thread.upvotes.some((u: unknown) => String(u) === userId);
+        if (hasUpvoted) {
+          thread.upvotes = thread.upvotes.filter((u: unknown) => String(u) !== userId);
+        } else {
+          thread.upvotes.push(userId);
+        }
+        await thread.save();
     }
-    await thread.save();
+
     const updated = await DiscussionThread.findById(resolved.id)
       .populate({ path: 'authorId', select: 'name', strictPopulate: false })
       .populate({ path: 'comments.authorId', select: 'name', strictPopulate: false })
       .lean();
+      
     if (!updated) {
       return NextResponse.json({ error: 'Updated thread fetch failed' }, { status: 500 });
     }
+    
     const normalized = {
       ...updated,
       upvotes: (updated.upvotes || []).map((u: unknown) => String(u)),
     };
-    return NextResponse.json({ thread: normalized, toggled: !hasUpvoted });
+    
+    return NextResponse.json({ thread: normalized });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     console.error('[discussions.PATCH] Error', msg);
