@@ -117,10 +117,22 @@ export default function ProjectsPage() {
                         {projects.map((project) => (
                             <Card key={project._id} shadow="sm" padding="lg" radius="md" withBorder>
                                 <Card.Section>
-                                    <Image
-                                        src={project.images[0] || "https://placehold.co/600x400?text=Project"}
-                                        height={160}
+                                    <img
+                                        src={
+                                            project.images?.[0]
+                                                ? project.images[0]
+                                                : project.demoLink
+                                                    ? `/api/screenshot?url=${encodeURIComponent(project.demoLink)}`
+                                                    : 'https://placehold.co/600x400?text=No+Preview'
+                                        }
                                         alt={project.title}
+                                        style={{ height: 160, width: '100%', objectFit: 'cover', display: 'block', background: '#18181b' }}
+                                        onError={(e) => {
+                                            if (!e.currentTarget.dataset.fallback) {
+                                                e.currentTarget.dataset.fallback = '1';
+                                                e.currentTarget.src = 'https://placehold.co/600x400?text=Preview+Unavailable';
+                                            }
+                                        }}
                                     />
                                 </Card.Section>
 
@@ -140,6 +152,15 @@ export default function ProjectsPage() {
                                         <Badge key={tech} variant="outline" size="sm" color="gray">{tech}</Badge>
                                     ))}
                                 </Group>
+                                {project.teamMembers && project.teamMembers.length > 0 && (
+                                    <Group mt="xs" gap="xs" wrap="wrap">
+                                        {project.teamMembers.map(m => (
+                                            <Badge key={m._id} color="indigo" variant="light" size="sm">
+                                                {m.name || 'Contributor'}
+                                            </Badge>
+                                        ))}
+                                    </Group>
+                                )}
 
                                 <Group mt="md" grow>
                                     {project.repoLink && (

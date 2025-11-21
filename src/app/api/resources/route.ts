@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
         const type = searchParams.get('type');
         const branch = searchParams.get('branch');
         const search = searchParams.get('search');
+        const uploaderId = searchParams.get('uploaderId');
 
         let query: any = {};
 
         if (type) query.type = type;
         if (branch) query.branch = branch;
+        if (uploaderId && /^[a-fA-F0-9]{24}$/.test(uploaderId)) query.uploaderId = uploaderId;
         if (search) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
             ];
         }
 
-        const resources = await Resource.find(query).populate('uploaderId', 'name').sort({ createdAt: -1 });
+        const resources = await Resource.find(query).populate('uploaderId', 'name').sort({ createdAt: -1 }).lean();
         return NextResponse.json({ resources });
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

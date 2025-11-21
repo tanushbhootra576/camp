@@ -6,9 +6,16 @@ import User from '@/models/User';
 export async function GET(req: NextRequest) {
     try {
         await dbConnect();
-        const projects = await Project.find()
+        const { searchParams } = new URL(req.url);
+        const memberId = searchParams.get('memberId');
+        const query: any = {};
+        if (memberId && /^[a-fA-F0-9]{24}$/.test(memberId)) {
+            query.teamMembers = memberId;
+        }
+        const projects = await Project.find(query)
             .sort({ isFeatured: -1, createdAt: -1 })
-            .populate('teamMembers', 'firebaseUid name email');
+            .populate('teamMembers', 'firebaseUid name email')
+            .lean();
         return NextResponse.json({ projects });
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

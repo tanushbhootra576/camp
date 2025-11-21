@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
         const type = searchParams.get('type');
         const category = searchParams.get('category');
         const search = searchParams.get('search');
+        const userId = searchParams.get('userId');
 
         let query: any = { status: 'OPEN' };
 
         if (type) query.type = type;
         if (category) query.category = category;
+        if (userId && /^[a-fA-F0-9]{24}$/.test(userId)) query.userId = userId;
         if (search) {
             query.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
             ];
         }
 
-        const skills = await SkillListing.find(query).populate('userId', 'name email branch year').sort({ createdAt: -1 });
+        const skills = await SkillListing.find(query).populate('userId', 'name email branch year').sort({ createdAt: -1 }).lean();
         return NextResponse.json({ skills });
     } catch (error) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
