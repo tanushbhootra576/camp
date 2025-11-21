@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import Project from '@/models/Project';
+import DiscussionThread from '@/models/DiscussionThread';
+import SkillListing from '@/models/SkillListing';
+import Event from '@/models/Event';
+import Message from '@/models/Message';
+import Quiz from '@/models/Quiz';
+import Resource from '@/models/Resource';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
     try {
@@ -79,10 +86,10 @@ export async function DELETE(
         const { uid } = await params;
         console.log('Attempting to delete user with firebaseUid:', uid);
 
-        const deletedUser = await User.findOneAndDelete({ firebaseUid: uid });
-        console.log('Delete result:', deletedUser);
+        // Find the user first to get their ObjectId
+        const user = await User.findOne({ firebaseUid: uid });
 
-        if (!deletedUser) {
+        if (!user) {
             console.log('User not found for deletion');
             return NextResponse.json(
                 { error: 'User not found' },
@@ -90,7 +97,45 @@ export async function DELETE(
             );
         }
 
-        return NextResponse.json({ message: 'User deleted successfully' });
+        const userId = user._id;
+
+        // 1. Delete Discussion Threads
+        await DiscussionThread.deleteMany({ authorId: userId });
+
+        // 2. Delete Skill Listings
+        await SkillListing.deleteMany({ userId: userId });
+
+        // 3. Delete Events
+        await Event.deleteMany({ organizerId: userId });
+
+        // 4. Delete Messages
+        await Message.deleteMany({ senderId: userId });
+
+        // 5. Delete Quizzes
+        await Quiz.deleteMany({ createdBy: userId });
+
+        // 6. Delete Resources
+        await Resource.deleteMany({ uploaderId: userId });
+
+        // 7. Handle Projects (Remove user from team, delete if empty)
+        const projects = await Project.find({ teamMembers: userId });
+        for (const project of projects) {
+            project.teamMembers = project.teamMembers.filter(
+                (memberId: any) => memberId.toString() !== userId.toString()
+            );
+            if (project.teamMembers.length === 0) {
+                await Project.findByIdAndDelete(project._id);
+            } else {
+                await project.save();
+            }
+        }
+
+        // Finally, delete the user
+        await User.findByIdAndDelete(userId);
+        
+        console.log('User and related data deleted successfully');
+
+        return NextResponse.json({ message: 'User and related data deleted successfully' });
     } catch (error) {
         console.error('Error deleting user:', error);
         return NextResponse.json(

@@ -103,6 +103,28 @@ export async function POST(req: NextRequest) {
     }
     try {
         const body = await req.json();
+        const { authorId, category } = body;
+
+        // Check for restricted categories
+        const restrictedCategories = ['SWE', 'AI', 'ML', 'DATASCIENCE', 'WEBDEV', 'APPDEV', 'CYBERSECURITY', 'BLOCKCHAIN', 'CLOUD', 'DEVOPS'];
+        
+        if (restrictedCategories.includes(category)) {
+            const user = await User.findById(authorId);
+            if (!user) {
+                return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            }
+
+            // Allow if role is alumni OR admin (Strict "Only Passout" rule)
+            const isAuthorized = user.role === 'alumni' || user.role === 'admin';
+            
+            if (!isAuthorized) {
+                return NextResponse.json({ 
+                    error: 'Permission denied', 
+                    detail: 'Only Alumni (Passouts) can post in this category to guide students.' 
+                }, { status: 403 });
+            }
+        }
+
         const thread = await DiscussionThread.create(body);
         return NextResponse.json({ thread }, { status: 201 });
     } catch (error: any) {

@@ -69,15 +69,85 @@ export async function POST(req: NextRequest) {
 
         let user = await User.findOne({ firebaseUid });
 
+        // Calculate year, role, and branch from Name (RegNo) or Email
+        let yearOfStudy = 1;
+        let calculatedRole = 'student';
+        let extractedBranch: string | undefined = undefined;
+
+        // 1. Try to parse Registration Number from Name (e.g., "Tanush Bhootra 24BRS1282")
+        // Pattern: 2 digits (Year), 3 letters (Branch), 4 digits (Serial)
+        const regNoMatch = name.match(/\b(\d{2})([A-Z]{3})(\d{4})\b/);
+
+        if (regNoMatch) {
+            const shortYear = parseInt(regNoMatch[1], 10); // e.g., 24
+            const branchCode = regNoMatch[2]; // e.g., BRS
+            const joiningYear = 2000 + shortYear; // 2024
+
+            const now = new Date();
+            const currentCalendarYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // 0-11. July is 6.
+
+            yearOfStudy = currentCalendarYear - joiningYear;
+            if (currentMonth >= 6) { // July or later
+                yearOfStudy += 1;
+            }
+            
+            // Use the branch code directly as requested
+            extractedBranch = branchCode;
+
+        } else {
+            // 2. Fallback: Extract from Email
+            const match = email.match(/(\d{4})@vitstudent\.ac\.in$/);
+            if (match) {
+                const joiningYear = parseInt(match[1], 10);
+                const now = new Date();
+                const currentCalendarYear = now.getFullYear();
+                const currentMonth = now.getMonth();
+
+                yearOfStudy = currentCalendarYear - joiningYear;
+                if (currentMonth >= 6) {
+                    yearOfStudy += 1;
+                }
+            }
+        }
+
+        if (yearOfStudy < 1) yearOfStudy = 1;
+        if (yearOfStudy > 4) calculatedRole = 'alumni';
+
         if (!user) {
             user = await User.create({
                 firebaseUid,
                 email,
                 name,
-                role: 'student',
+                role: calculatedRole,
+                year: yearOfStudy,
+                branch: extractedBranch, // Set branch if found
                 skills: [],
                 interests: [],
             });
+        } else {
+            // Update existing user
+            const updates: any = {};
+            
+            // Update Year if changed
+            if (!user.year || user.year !== yearOfStudy) {
+                updates.year = yearOfStudy;
+            }
+            
+            // Update Role if changed (and not admin)
+            if (user.role !== 'admin' && user.role !== calculatedRole) {
+                updates.role = calculatedRole;
+            }
+
+            // Update Branch if found in name and not set or different
+            // We prioritize the RegNo branch if available
+            if (extractedBranch && user.branch !== extractedBranch) {
+                updates.branch = extractedBranch;
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                user = await User.findByIdAndUpdate(user._id, updates, { new: true });
+            }
         }
 
         return NextResponse.json({ user }, { status: 201 });

@@ -4,8 +4,9 @@ export interface IMessage extends Document {
     content: string;
     senderId: mongoose.Types.ObjectId;
     senderName: string;
-    type: 'universal' | 'branch';
+    type: 'universal' | 'branch' | 'year';
     branch?: string;
+    year?: number;
     createdAt: Date;
 }
 
@@ -26,19 +27,24 @@ const MessageSchema: Schema<IMessage> = new Schema({
     },
     type: {
         type: String,
-        enum: ['universal', 'branch'],
+        enum: ['universal', 'branch', 'year'],
         required: true,
     },
     branch: {
         type: String,
-        required: function (this: IMessage) {
-            return this.type === 'branch';
-        },
+    },
+    year: {
+        type: Number,
     },
 }, {
     timestamps: true,
 });
 
-const Message: Model<IMessage> = mongoose.models.Message || mongoose.model<IMessage>('Message', MessageSchema);
+// Delete the model if it exists to prevent hot-reload errors with schema changes
+if (mongoose.models.Message) {
+    delete mongoose.models.Message;
+}
+
+const Message: Model<IMessage> = mongoose.model<IMessage>('Message', MessageSchema);
 
 export default Message;

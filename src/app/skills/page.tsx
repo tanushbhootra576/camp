@@ -5,7 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { Container, Title, Button, Group, Card, Badge, Text, SimpleGrid, TextInput, Select, Modal, Textarea, LoadingOverlay } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
-import { IconSearch, IconPlus, IconBrandGmail, IconBrandWindows, IconBrandYahoo, IconMail } from '@tabler/icons-react';
+import { IconSearch, IconPlus, IconBrandGmail, IconBrandWindows, IconBrandYahoo, IconMail, IconCheck, IconTrash } from '@tabler/icons-react';
 
 interface Skill {
     _id: string;
@@ -13,9 +13,11 @@ interface Skill {
     description: string;
     type: 'OFFER' | 'REQUEST';
     category: 'ACADEMIC' | 'NON_ACADEMIC';
+    status: 'OPEN' | 'CLOSED';
     tags: string[];
     // userId may be populated object, raw id string, or null if user removed
     userId?: {
+        _id: string;
         name?: string;
         email?: string;
         branch?: string;
@@ -95,6 +97,42 @@ export default function SkillsPage() {
         }
     };
 
+    const handleMarkDone = async (skillId: string) => {
+        if (!confirm('Mark this listing as completed? It will be hidden from the marketplace.')) return;
+        try {
+            const res = await fetch(`/api/skills/${skillId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'CLOSED' }),
+            });
+            if (res.ok) {
+                fetchSkills(); // This will re-fetch, and since API filters OPEN by default, it will disappear
+            } else {
+                alert('Failed to update status');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error updating status');
+        }
+    };
+
+    const handleDelete = async (skillId: string) => {
+        if (!confirm('Are you sure you want to delete this listing?')) return;
+        try {
+            const res = await fetch(`/api/skills/${skillId}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                fetchSkills();
+            } else {
+                alert('Failed to delete listing');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error deleting listing');
+        }
+    };
+
     return (
         <>
             <Navbar />
@@ -128,7 +166,11 @@ export default function SkillsPage() {
                 <div style={{ position: 'relative', minHeight: 200 }}>
                     <LoadingOverlay visible={loading} />
                     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-                        {skills.map((skill) => (
+                        {skills.map((skill) => {
+                            const skillUser = (skill.userId && typeof skill.userId === 'object') ? skill.userId : null;
+                            const isOwner = profile && skillUser && String(skillUser._id) === String(profile._id);
+
+                            return (
                             <Card key={skill._id} shadow="sm" padding="lg" radius="md" withBorder>
                                 <Group justify="space-between" mb="xs">
                                     <Badge color={skill.type === 'OFFER' ? 'blue' : 'orange'}>{skill.type}</Badge>
@@ -148,9 +190,8 @@ export default function SkillsPage() {
 
                                 <Text size="xs" c="dimmed" mt="md">
                                     {(() => {
-                                        const user = (skill.userId && typeof skill.userId === 'object') ? skill.userId : null;
-                                        const name = user?.name?.trim() || 'Unknown user';
-                                        const branch = user?.branch ? ` (${user.branch})` : '';
+                                        const name = skillUser?.name?.trim() || 'Unknown user';
+                                        const branch = skillUser?.branch ? ` (${skillUser.branch})` : '';
                                         return `Posted by ${name}${branch}`;
                                     })()}
                                 </Text>
@@ -162,6 +203,9 @@ export default function SkillsPage() {
                                             <Text size="xs" c="red" mt="sm">Contact unavailable</Text>
                                         );
                                     }
+                                    // If owner, maybe show nothing or disabled button? 
+                                    // User asked "dont remove the contact button", so we leave it as is (or disable it for owner).
+                                    // We'll just show it.
                                     return (
                                         <Button
                                             onClick={() => {
@@ -173,13 +217,14 @@ export default function SkillsPage() {
                                             fullWidth
                                             mt="md"
                                             radius="md"
+                                            disabled={skill.status === 'CLOSED'}
                                         >
-                                            Contact
+                                            {skill.status === 'CLOSED' ? 'Closed' : 'Contact'}
                                         </Button>
                                     );
                                 })()}
                             </Card>
-                        ))}
+                        )})}
                     </SimpleGrid>
                     {!loading && skills.length === 0 && (
                         <Text ta="center" c="dimmed" mt="xl">No skills found.</Text>

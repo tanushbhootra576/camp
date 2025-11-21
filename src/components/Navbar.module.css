@@ -56,3 +56,20 @@
 :global([data-mantine-color-scheme='dark']) .dark {
     display: block;
 }
+
+.linkMobile {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    width: 100%;
+    padding-left: var(--mantine-spacing-md);
+    padding-right: var(--mantine-spacing-md);
+    text-decoration: none;
+    color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+    font-weight: 500;
+    font-size: var(--mantine-font-size-sm);
+}
+
+.linkMobile:hover {
+    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}

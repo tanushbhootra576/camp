@@ -9,14 +9,20 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type');
         const branch = searchParams.get('branch');
+        const year = searchParams.get('year');
 
-        if (!type || (type === 'branch' && !branch)) {
+        if (!type) {
             return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
         }
 
         const query: any = { type };
         if (type === 'branch') {
+            if (!branch) return NextResponse.json({ error: 'Branch required' }, { status: 400 });
             query.branch = branch;
+        }
+        if (type === 'year') {
+            if (!year) return NextResponse.json({ error: 'Year required' }, { status: 400 });
+            query.year = Number(year);
         }
 
         const messages = await Message.find(query)
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { content, senderId, type, branch } = body;
+        const { content, senderId, type, branch, year } = body;
 
         if (!content || !senderId || !type) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -46,13 +52,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Verify branch match if type is branch
+        // Verify branch/year match
         if (type === 'branch') {
-            if (!branch) {
-                return NextResponse.json({ error: 'Branch is required for branch chat' }, { status: 400 });
+            if (!branch) return NextResponse.json({ error: 'Branch is required' }, { status: 400 });
+            // Allow if sender.branch is missing (legacy users) or matches
+            if (sender.branch && sender.branch !== branch) {
+                return NextResponse.json({ error: 'Wrong branch' }, { status: 403 });
             }
-            if (sender.branch !== branch) {
-                return NextResponse.json({ error: 'You can only post in your own branch chat' }, { status: 403 });
+        }
+        if (type === 'year') {
+            if (!year) return NextResponse.json({ error: 'Year is required' }, { status: 400 });
+            
+            // Allow if sender.year is missing (legacy users) or matches
+            if (sender.year && Number(sender.year) !== Number(year)) {
+                return NextResponse.json({ error: `Wrong year. You are in Year ${sender.year}, but trying to post to Year ${year}` }, { status: 403 });
             }
         }
 
@@ -62,11 +75,12 @@ export async function POST(req: NextRequest) {
             senderName: sender.name,
             type,
             branch: type === 'branch' ? branch : undefined,
+            year: type === 'year' ? year : undefined,
         });
 
         return NextResponse.json({ message }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating message:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -12,7 +12,13 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get('search');
         const userId = searchParams.get('userId');
 
-        let query: any = { status: 'OPEN' };
+        let query: any = {};
+
+        // If userId is provided, we return all skills (OPEN and CLOSED) so they appear on profile
+        // If no userId (main feed), we only show OPEN skills
+        if (!userId) {
+            query.status = 'OPEN';
+        }
 
         if (type) query.type = type;
         if (category) query.category = category;

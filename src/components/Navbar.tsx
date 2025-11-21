@@ -36,7 +36,7 @@ export function Navbar() {
                             </Text>
                         </Group>
 
-                        <Group h="100%" gap={0} visibleFrom="sm">
+                        <Group h="100%" gap={0} visibleFrom="md">
                             <Link href="/skills" className={classes.link}>
                                 Skills
                             </Link>
@@ -55,9 +55,12 @@ export function Navbar() {
                             <Link href="/quizzes" className={classes.link}>
                                 Quizzes
                             </Link>
+                            <Link href="/chat" className={classes.link}>
+                                Chat
+                            </Link>
                         </Group>
 
-                        <Group visibleFrom="sm" gap="md">
+                        <Group visibleFrom="md" gap="md">
                             <ActionIcon
                                 component={Link}
                                 href="/users"
@@ -119,7 +122,7 @@ export function Navbar() {
                             )}
                         </Group>
 
-                        <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="sm" />
+                        <Burger opened={drawerOpened} onClick={toggleDrawer} hiddenFrom="md" />
                     </Group>
                 </Container>
             </header>
@@ -130,33 +133,44 @@ export function Navbar() {
                 size="100%"
                  padding="md"
                 title="Navigation"
-                hiddenFrom="sm"
+                hiddenFrom="md"
                 zIndex={1000000}
             >
                 <ScrollArea h={`calc(100vh - ${rem(80)})`} mx="-md">
                     <Divider my="sm" />
 
-                    <Link href="/" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/" className={classes.linkMobile} onClick={closeDrawer}>
                         Home
                     </Link>
-                    <Link href="/skills" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/skills" className={classes.linkMobile} onClick={closeDrawer}>
                         Skills
                     </Link>
-                    <Link href="/resources" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/resources" className={classes.linkMobile} onClick={closeDrawer}>
                         Resources
                     </Link>
-                    <Link href="/events" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/events" className={classes.linkMobile} onClick={closeDrawer}>
                         Events
                     </Link>
-                    <Link href="/projects" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/projects" className={classes.linkMobile} onClick={closeDrawer}>
                         Projects
                     </Link>
-                    <Link href="/discussions" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/discussions" className={classes.linkMobile} onClick={closeDrawer}>
                         Discussions
                     </Link>
-                    <Link href="/quizzes" className={classes.link} onClick={closeDrawer}>
+                    <Link href="/quizzes" className={classes.linkMobile} onClick={closeDrawer}>
                         Quizzes
                     </Link>
+                    <Link href="/chat" className={classes.linkMobile} onClick={closeDrawer}>
+                        Chat
+                    </Link>
+                    <Link href="/users" className={classes.linkMobile} onClick={closeDrawer}>
+                        Search People
+                    </Link>
+                    {user && (
+                        <Link href="/profile" className={classes.linkMobile} onClick={closeDrawer}>
+                            Profile
+                        </Link>
+                    )}
 
                     <Divider my="sm" />
 

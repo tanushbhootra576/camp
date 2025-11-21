@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React from 'react';
 import { Navbar } from '@/components/Navbar';
+import { useAuth } from '@/components/AuthProvider';
 import {
   Container,
   Title,
@@ -39,6 +40,7 @@ interface StatsData {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [stats, setStats] = React.useState<StatsData | null>(null);
   const [statsError, setStatsError] = React.useState<string | null>(null);
   React.useEffect(() => {
@@ -68,9 +70,7 @@ export default function Home() {
         <Container size="lg">
           <Center>
             <Stack align="center" gap="xl" ta="center">
-              {/* <ThemeIcon size={70} radius="xl" variant="gradient" gradient={{ from: 'violet', to: 'blue' }}>
-                <IconRocket style={{ width: rem(36), height: rem(36) }} stroke={2} />
-              </ThemeIcon> */}
+          
 <br /><br />
               <Title order={1} className={classes.headline}>
                 Build, Learn and Shine with
@@ -82,19 +82,33 @@ export default function Home() {
               </Text>
 
               <Group>
-                <Button
-                  component={Link}
-                  href="/signup"
-                  size="lg"
-                  radius="xl"
-                  variant="gradient"
-                  gradient={{ from: 'violet', to: 'blue' }}
-                  rightSection={<IconArrowRight size={18} />}
-                >
-                  Get Started
-                </Button>
-                <Button component={Link} href="/projects" size="lg" radius="xl" variant="default">
-                  Browse Projects
+                {!user ? (
+                  <Button
+                    component={Link}
+                    href="/signup"
+                    size="lg"
+                    radius="xl"
+                    variant="gradient"
+                    gradient={{ from: 'violet', to: 'blue' }}
+                    rightSection={<IconArrowRight size={18} />}
+                  >
+                    Get Started
+                  </Button>
+                ) : (
+                  <Button
+                    component={Link}
+                    href="/profile"
+                    size="lg"
+                    radius="xl"
+                    variant="gradient"
+                    gradient={{ from: 'violet', to: 'blue' }}
+                    rightSection={<IconArrowRight size={18} />}
+                  >
+                    Go to Profile
+                  </Button>
+                )}
+                <Button component={Link} href="/skills" size="lg" radius="xl" variant="default">
+                  Browse Skills
                 </Button>
               </Group>
 
@@ -199,12 +213,20 @@ export default function Home() {
                 <Text c="dimmed">Create your profile and join the college builder community today.</Text>
               </div>
               <Group>
-                <Button component={Link} href="/signup" radius="xl" size="md" variant="gradient" gradient={{ from: 'violet', to: 'blue' }}>
-                  Create account
-                </Button>
-                <Button component={Link} href="/login" radius="xl" size="md" variant="default">
-                  I already have one
-                </Button>
+                {!user ? (
+                  <>
+                    <Button component={Link} href="/signup" radius="xl" size="md" variant="gradient" gradient={{ from: 'violet', to: 'blue' }}>
+                      Create account
+                    </Button>
+                    <Button component={Link} href="/login" radius="xl" size="md" variant="default">
+                      I already have one
+                    </Button>
+                  </>
+                ) : (
+                  <Button component={Link} href="/profile" radius="xl" size="md" variant="gradient" gradient={{ from: 'violet', to: 'blue' }}>
+                    Go to Profile
+                  </Button>
+                )}
               </Group>
             </Group>
           </Card>
