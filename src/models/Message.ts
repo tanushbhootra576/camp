@@ -7,13 +7,22 @@ export interface IMessage extends Document {
     type: 'universal' | 'branch' | 'year';
     branch?: string;
     year?: number;
+    replyTo?: {
+        _id: mongoose.Types.ObjectId;
+        content: string;
+        senderName: string;
+    };
+    reactions: {
+        userId: mongoose.Types.ObjectId;
+        emoji: string;
+    }[];
+    sticker?: string;
     createdAt: Date;
 }
 
 const MessageSchema: Schema<IMessage> = new Schema({
     content: {
         type: String,
-        required: [true, 'Message content is required'],
         trim: true,
     },
     senderId: {
@@ -36,6 +45,16 @@ const MessageSchema: Schema<IMessage> = new Schema({
     year: {
         type: Number,
     },
+    replyTo: {
+        _id: { type: Schema.Types.ObjectId, ref: 'Message' },
+        content: String,
+        senderName: String
+    },
+    reactions: [{
+        userId: { type: Schema.Types.ObjectId, ref: 'User' },
+        emoji: String
+    }],
+    sticker: String
 }, {
     timestamps: true,
 });

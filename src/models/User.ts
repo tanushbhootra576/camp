@@ -17,6 +17,7 @@ export interface IUser extends Document {
     };
     profileLocked: boolean;
     acceptedGuidelines: boolean;
+    lastActive: Date;
     createdAt: Date;
 }
 
@@ -47,6 +48,7 @@ const UserSchema: Schema<IUser> = new Schema({
         type: Boolean,
         default: false,
     },
+    lastActive: { type: Date },
     createdAt: { type: Date, default: Date.now },
 });
 

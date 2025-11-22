@@ -37,6 +37,7 @@ import {
 import { useAuth } from '@/components/AuthProvider';
 import { useDisclosure } from '@mantine/hooks';
 import { showError } from '@/lib/error-handling';
+import { getAuthHeaders } from '@/lib/api';
 
 interface SubjectResource {
   _id: string;
@@ -80,7 +81,7 @@ export default function ResourcesPage() {
       if (year && year !== 'all') {
         url += `?year=${encodeURIComponent(year)}`;
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.resources) {
         setResources(data.resources);

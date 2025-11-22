@@ -39,3 +39,49 @@ export async function DELETE(
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        await dbConnect();
+        const { id } = await params;
+        const body = await req.json();
+        const { action, userId, emoji } = body;
+
+        if (!userId || !action) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        const message = await Message.findById(id);
+        if (!message) {
+            return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+        }
+
+        if (action === 'react') {
+            if (!emoji) return NextResponse.json({ error: 'Emoji required' }, { status: 400 });
+            
+            // Check if user already reacted with this emoji
+            const existingReaction = message.reactions.find(
+                (r: { userId: { toString: () => string }; emoji: string }) => r.userId.toString() === userId && r.emoji === emoji
+            );
+
+            if (existingReaction) {
+                // Remove reaction (toggle off)
+                message.reactions = message.reactions.filter(
+                    (r: { userId: { toString: () => string }; emoji: string }) => !(r.userId.toString() === userId && r.emoji === emoji)
+                );
+            } else {
+                // Add reaction
+                message.reactions.push({ userId, emoji });
+            }
+        }
+
+        await message.save();
+        return NextResponse.json({ message });
+    } catch (error) {
+        console.error('Error updating message:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}

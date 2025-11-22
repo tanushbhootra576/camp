@@ -11,10 +11,21 @@ export async function GET(req: NextRequest) {
         const type = searchParams.get('type');
         const branch = searchParams.get('branch');
         const year = searchParams.get('year');
+        const userId = searchParams.get('userId');
 
         if (!type) {
             return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
         }
+
+        // Update user's last active status if userId is provided
+        if (userId) {
+            await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+        }
+
+        // Get online users count (active in last 5 minutes)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const onlineCount = await User.countDocuments({ lastActive: { $gte: fiveMinutesAgo } });
+        const totalUsers = await User.countDocuments({});
 
         const query: any = { type };
         if (type === 'branch') {
@@ -26,11 +37,13 @@ export async function GET(req: NextRequest) {
             query.year = Number(year);
         }
 
+        const totalMessages = await Message.countDocuments(query);
+
         const messages = await Message.find(query)
             .sort({ createdAt: 1 }) // Oldest first
             .limit(100); // Limit to last 100 messages
 
-        return NextResponse.json({ messages }, { status: 200 });
+        return NextResponse.json({ messages, onlineCount, totalUsers, totalMessages }, { status: 200 });
     } catch (error) {
         console.error('Error fetching messages:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -41,9 +54,9 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { content, senderId, type, branch, year } = body;
+        const { content, senderId, type, branch, year, replyTo, sticker } = body;
 
-        if (!content || !senderId || !type) {
+        if ((!content && !sticker) || !senderId || !type) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
@@ -54,10 +67,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Moderation check
-        try {
-            await validateContent(content, 'message');
-        } catch (modError: any) {
-            return NextResponse.json({ error: modError.message }, { status: 400 });
+        if (content) {
+            try {
+                await validateContent(content, 'message');
+            } catch (modError: any) {
+                return NextResponse.json({ error: modError.message }, { status: 400 });
+            }
         }
 
         // Verify branch/year match
@@ -77,14 +92,21 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const message = await Message.create({
-            content,
+        const messageData: any = {
+            content: content || '',
             senderId,
             senderName: sender.name,
             type,
             branch: type === 'branch' ? branch : undefined,
             year: type === 'year' ? year : undefined,
-        });
+            sticker
+        };
+
+        if (replyTo) {
+            messageData.replyTo = replyTo;
+        }
+
+        const message = await Message.create(messageData);
 
         return NextResponse.json({ message }, { status: 201 });
     } catch (error: any) {
