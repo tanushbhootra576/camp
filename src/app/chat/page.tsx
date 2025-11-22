@@ -333,12 +333,17 @@ export default function ChatPage() {
                                                 <Paper 
                                                     p="xs" 
                                                     mb={4} 
-                                                    bg="gray.1" 
+                                                    bg={isMe ? 'rgba(255, 255, 255, 0.2)' : 'white'} 
                                                     radius="sm" 
-                                                    style={{ borderLeft: '3px solid #228be6', opacity: 0.8, fontSize: '0.85rem', cursor: 'pointer' }}
+                                                    style={{ 
+                                                        borderLeft: `3px solid ${isMe ? 'white' : '#228be6'}`, 
+                                                        fontSize: '0.85rem', 
+                                                        cursor: 'pointer',
+                                                        color: isMe ? 'white' : 'black'
+                                                    }}
                                                 >
-                                                    <Text size="xs" fw={700}>{msg.replyTo.senderName}</Text>
-                                                    <Text size="xs" lineClamp={1}>{msg.replyTo.content}</Text>
+                                                    <Text size="xs" fw={700} c={isMe ? 'white' : 'black'}>{msg.replyTo.senderName}</Text>
+                                                    <Text size="xs" lineClamp={1} c={isMe ? 'rgba(255,255,255,0.8)' : 'dimmed'}>{msg.replyTo.content}</Text>
                                                 </Paper>
                                             )}
 
@@ -444,10 +449,22 @@ export default function ChatPage() {
                     </ScrollArea>
 
                     {replyingTo && (
-                        <Paper p="xs" mb="xs" bg="gray.0" withBorder style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Paper 
+                            p="sm" 
+                            mb="xs" 
+                            bg="gray.0" 
+                            withBorder 
+                            radius="md"
+                            style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                borderLeft: '4px solid #228be6'
+                            }}
+                        >
                             <Box>
-                                <Text size="xs" fw={700}>Replying to {replyingTo.senderName}</Text>
-                                <Text size="xs" lineClamp={1} c="dimmed">{replyingTo.content}</Text>
+                                <Text size="xs" fw={700} c="blue">Replying to {replyingTo.senderName}</Text>
+                                <Text size="sm" lineClamp={1} c="dimmed">{replyingTo.content}</Text>
                             </Box>
                             <ActionIcon variant="subtle" color="gray" onClick={() => setReplyingTo(null)}>
                                 <IconX size={16} />
