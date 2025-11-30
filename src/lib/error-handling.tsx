@@ -1,8 +1,13 @@
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
 import { Text, Button, Group, ThemeIcon } from '@mantine/core';
-import { IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { toast, ToastOptions } from 'react-toastify';
 import React from 'react';
+
+const defaultToastOptions: ToastOptions = {
+    pauseOnHover: true,
+    pauseOnFocusLoss: false,
+};
 
 export function showError(error: any, title: string = 'Error') {
     const message = error?.message || 'An unexpected error occurred';
@@ -42,12 +47,13 @@ export function showError(error: any, title: string = 'Error') {
         return;
     }
 
-    // Default error notification
-    notifications.show({
-        color: 'red',
-        title: title,
-        message: message,
-        icon: <IconX size={16} />,
-        autoClose: 5000,
-    });
+    toast.error(`${title}: ${message}`, defaultToastOptions);
+}
+
+export function showSuccess(message: string, options?: ToastOptions) {
+    toast.success(message, { ...defaultToastOptions, ...options });
+}
+
+export function showInfo(message: string, options?: ToastOptions) {
+    toast.info(message, { ...defaultToastOptions, ...options });
 }

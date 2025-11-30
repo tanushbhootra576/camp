@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Update user's last active status if userId is provided
-        if (userId) {
+        if (userId && Types.ObjectId.isValid(userId)) {
             await User.findByIdAndUpdate(userId, { lastActive: new Date() });
         }
 
@@ -32,64 +32,96 @@ export async function GET(req: NextRequest) {
 
         if (type === 'conversations') {
             if (!userId) return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-            
-            // Find all DM messages involving this user to get unique contacts
-            // Optimization: Use aggregation to get unique other parties
-            const conversations = await Message.aggregate([
+            if (!Types.ObjectId.isValid(userId)) {
+                return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+            }
+            const userObjectId = new Types.ObjectId(userId);
+            const currentUser = await User.findById(userId).select('dmLastRead');
+
+            const lastReadMap = new Map<string, Date>();
+            const dmLastRead: any = currentUser?.dmLastRead;
+            if (dmLastRead) {
+                if (dmLastRead instanceof Map) {
+                    dmLastRead.forEach((value: Date, key: string) => {
+                        if (value) lastReadMap.set(String(key), new Date(value));
+                    });
+                } else {
+                    Object.entries(dmLastRead).forEach(([key, value]) => {
+                        if (value) lastReadMap.set(String(key), new Date(value as any));
+                    });
+                }
+            }
+
+            const conversationDocs = await Message.aggregate([
                 {
                     $match: {
                         type: 'dm',
-                        $or: [{ senderId: userId }, { recipientId: userId }]
+                        $or: [{ senderId: userObjectId }, { recipientId: userObjectId }]
                     }
                 },
-                {
-                    $sort: { createdAt: -1 }
-                },
+                { $sort: { createdAt: -1 } },
                 {
                     $group: {
                         _id: {
-                            $cond: [{ $eq: ["$senderId", userId] }, "$recipientId", "$senderId"]
+                            $cond: [{ $eq: ['$senderId', userObjectId] }, '$recipientId', '$senderId']
                         },
-                        lastMessage: { $first: "$$ROOT" }
+                        lastMessage: { $first: '$$ROOT' }
                     }
                 },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "_id",
-                        foreignField: "_id", // Assuming _id is stored as string in Message but ObjectId in User. If Message stores string, we might need conversion. 
-                        // Actually Message schema defines senderId as String. User _id is ObjectId. 
-                        // Mongoose/Mongo usually handles this if we cast, but in aggregation it's tricky.
-                        // Let's try simple find first to avoid type mismatch issues if IDs are strings vs ObjectIds.
-                        as: "userDetails"
-                    }
-                }
+                { $match: { _id: { $ne: null } } }
             ]);
-            
-            // Since aggregation with lookup on String vs ObjectId is painful without $toObjectId (which requires Mongo 4.0+), 
-            // and we are using Mongoose where _id is ObjectId but we store strings in Message...
-            // Let's do it in application layer for safety and simplicity.
-            
-            const distinctUserIds = await Message.find({
-                type: 'dm',
-                $or: [{ senderId: userId }, { recipientId: userId }]
-            }).distinct('senderId');
-            
-            const distinctRecipientIds = await Message.find({
-                type: 'dm',
-                $or: [{ senderId: userId }, { recipientId: userId }]
-            }).distinct('recipientId');
-            
-            const normalizedIds = [...distinctUserIds, ...distinctRecipientIds]
-                .map(id => (typeof id === 'string' ? id : (id as Types.ObjectId | undefined)?.toString()))
-                .filter((id): id is string => Boolean(id && id !== userId));
 
-            const uniqueIds = Array.from(new Set(normalizedIds));
-            
-            const users = await User.find({ _id: { $in: uniqueIds } })
+            const otherUserIds = conversationDocs
+                .map((doc: any) => doc._id)
+                .filter(Boolean)
+                .map((id: Types.ObjectId) => id.toString());
+
+            if (otherUserIds.length === 0) {
+                return NextResponse.json({ conversations: [], totalUnread: 0 }, { status: 200 });
+            }
+
+            const users = await User.find({ _id: { $in: otherUserIds } })
                 .select('name _id firebaseUid photoURL');
 
-            return NextResponse.json({ conversations: users }, { status: 200 });
+            const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+            const unreadMessages = await Message.find({
+                type: 'dm',
+                recipientId: userObjectId,
+                senderId: { $in: otherUserIds.map((id) => new Types.ObjectId(id)) }
+            }).select('senderId createdAt');
+
+            const unreadCountMap: Record<string, number> = {};
+            unreadMessages.forEach((msg) => {
+                const senderIdStr = msg.senderId?.toString();
+                if (!senderIdStr) return;
+                const lastRead = lastReadMap.get(senderIdStr);
+                if (!lastRead || msg.createdAt > lastRead) {
+                    unreadCountMap[senderIdStr] = (unreadCountMap[senderIdStr] || 0) + 1;
+                }
+            });
+
+            const conversations = conversationDocs
+                .map((doc: any) => {
+                    const otherId = doc._id?.toString();
+                    if (!otherId) return null;
+                    const userDetails: any = userMap.get(otherId);
+                    const lastMessage = doc.lastMessage;
+                    return {
+                        _id: otherId,
+                        name: userDetails?.name || 'Unknown',
+                        photoURL: userDetails?.photoURL,
+                        firebaseUid: userDetails?.firebaseUid,
+                        unreadCount: unreadCountMap[otherId] || 0,
+                        lastMessagePreview: lastMessage?.sticker ? '🖼 Sticker' : (lastMessage?.content || ''),
+                        lastMessageAt: lastMessage?.createdAt
+                    };
+                })
+                .filter(Boolean);
+
+            const totalUnread = conversations.reduce((sum, conv: any) => sum + (conv.unreadCount || 0), 0);
+
+            return NextResponse.json({ conversations, totalUnread }, { status: 200 });
         }
 
         let query: any = { type };
@@ -115,6 +147,10 @@ export async function GET(req: NextRequest) {
         const messages = await Message.find(query)
             .sort({ createdAt: 1 }) // Oldest first
             .limit(100); // Limit to last 100 messages
+
+        if (type === 'dm' && userId && recipientId && Types.ObjectId.isValid(userId) && Types.ObjectId.isValid(recipientId)) {
+            await User.findByIdAndUpdate(userId, { $set: { [`dmLastRead.${recipientId}`]: new Date() } });
+        }
 
         return NextResponse.json({ messages, onlineCount, totalUsers, totalMessages }, { status: 200 });
     } catch (error) {

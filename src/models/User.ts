@@ -18,6 +18,7 @@ export interface IUser extends Document {
     profileLocked: boolean;
     acceptedGuidelines: boolean;
     blockedUsers: string[];
+    dmLastRead?: Record<string, Date>;
     lastActive: Date;
     createdAt: Date;
 }
@@ -50,6 +51,11 @@ const UserSchema: Schema<IUser> = new Schema({
         default: false,
     },
     blockedUsers: [{ type: String }],
+    dmLastRead: {
+        type: Map,
+        of: Date,
+        default: {}
+    },
     lastActive: { type: Date },
     createdAt: { type: Date, default: Date.now },
 });

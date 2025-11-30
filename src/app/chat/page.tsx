@@ -7,7 +7,7 @@ import { Container, Title, Paper, Tabs, ScrollArea, TextInput, ActionIcon, Group
 import { useMediaQuery } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
 import { IconSend, IconTrash, IconRefresh, IconMoodSmile, IconArrowBackUp, IconX, IconSticker, IconThumbUp, IconHeart, IconMoodHappy, IconMoodSurprised, IconMoodSad, IconFlame, IconSearch, IconArrowDown, IconHash, IconBuilding, IconCalendar, IconMessage, IconUserPlus, IconBan, IconDotsVertical, IconArrowLeft } from '@tabler/icons-react';
-import { showError } from '@/lib/error-handling';
+import { showError, showSuccess, showInfo } from '@/lib/error-handling';
 import { getAuthHeaders } from '@/lib/api';
 
 interface Reaction {
@@ -31,6 +31,15 @@ interface Message {
     };
     reactions: Reaction[];
     sticker?: string;
+}
+
+interface ConversationSummary {
+    _id: string;
+    name: string;
+    photoURL?: string;
+    unreadCount?: number;
+    lastMessagePreview?: string;
+    lastMessageAt?: string;
 }
 
 const REACTION_ICONS: Record<string, any> = {
@@ -77,7 +86,10 @@ function ChatPageContent() {
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [dmUser, setDmUser] = useState<{ name: string } | null>(null);
-    const [recentDms, setRecentDms] = useState<any[]>([]);
+    const [recentDms, setRecentDms] = useState<ConversationSummary[]>([]);
+    const [totalDmUnread, setTotalDmUnread] = useState(0);
+    const dmUnreadSnapshot = useRef<Record<string, number>>({});
+    const dmSnapshotReady = useRef(false);
     
     // New State
     const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -95,6 +107,11 @@ function ChatPageContent() {
             setBlockedUsers(profile.blockedUsers);
         }
     }, [profile]);
+
+    useEffect(() => {
+        dmSnapshotReady.current = false;
+        dmUnreadSnapshot.current = {};
+    }, [profile?._id]);
 
     const handleSearchUsers = async (query: string) => {
         setUserSearchQuery(query);
@@ -138,7 +155,7 @@ function ChatPageContent() {
                 setBlockedUsers(data.blockedUsers);
                 // Update local profile if needed, or just rely on state
                 refreshProfile(); 
-                showError({ message: `User ${action}ed successfully` }, 'Success');
+                showSuccess(`User ${action}ed successfully`);
             }
         } catch (error) {
             showError(error, 'Block Failed');
@@ -146,15 +163,30 @@ function ChatPageContent() {
     };
 
     useEffect(() => {
-        if (profile?._id) {
-            fetch(`/api/chat?type=conversations&userId=${profile._id}`, { headers: getAuthHeaders() })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.conversations) setRecentDms(data.conversations);
-                })
-                .catch(console.error);
-        }
-    }, [profile, activeTab]); // Refresh when tab changes (e.g. new message sent)
+        if (!profile?._id) return;
+        let isMounted = true;
+
+        const fetchConversations = async () => {
+            try {
+                const res = await fetch(`/api/chat?type=conversations&userId=${profile._id}`, { headers: getAuthHeaders() });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!isMounted) return;
+                setRecentDms(Array.isArray(data.conversations) ? data.conversations : []);
+                setTotalDmUnread(data.totalUnread || 0);
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        fetchConversations();
+        const interval = setInterval(fetchConversations, 5000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [profile?._id]);
 
     useEffect(() => {
         if (dmRecipientId) {
@@ -244,6 +276,36 @@ function ChatPageContent() {
         setAutoScroll(true);
         scrollToBottom();
     }, [activeTab]);
+
+    useEffect(() => {
+        if (recentDms.length === 0) {
+            dmUnreadSnapshot.current = {};
+            dmSnapshotReady.current = false;
+            return;
+        }
+
+        if (!dmSnapshotReady.current) {
+            dmUnreadSnapshot.current = recentDms.reduce<Record<string, number>>((acc, dm) => {
+                acc[dm._id] = dm.unreadCount || 0;
+                return acc;
+            }, {});
+            dmSnapshotReady.current = true;
+            return;
+        }
+
+        const nextSnapshot: Record<string, number> = {};
+        recentDms.forEach((dm) => {
+            const current = dm.unreadCount || 0;
+            const previous = dmUnreadSnapshot.current[dm._id] || 0;
+            if (current > previous && (activeTab !== 'dm' || dmRecipientId !== dm._id)) {
+                const delta = current - previous;
+                showInfo(`${dm.name} sent ${delta} new message${delta > 1 ? 's' : ''}`);
+            }
+            nextSnapshot[dm._id] = current;
+        });
+
+        dmUnreadSnapshot.current = nextSnapshot;
+    }, [recentDms, activeTab, dmRecipientId]);
 
     const handleSendMessage = async (stickerUrl?: string) => {
         if ((!newMessage.trim() && !stickerUrl) || !user || !profile) return;
@@ -424,7 +486,14 @@ function ChatPageContent() {
                                 </Button>
 
                                 <Group justify="space-between" mt="md" mb="xs">
-                                    <Text fw={700} c="dimmed" size="xs" tt="uppercase">Direct Messages</Text>
+                                    <Group gap={6} align="center">
+                                        <Text fw={700} c="dimmed" size="xs" tt="uppercase">Direct Messages</Text>
+                                        {totalDmUnread > 0 && (
+                                            <Badge size="xs" color="red" variant="filled">
+                                                {totalDmUnread}
+                                            </Badge>
+                                        )}
+                                    </Group>
                                     <Tooltip label="New Chat">
                                         <ActionIcon variant="subtle" color="gray" size="xs" onClick={() => setSearchModalOpen(true)}>
                                             <IconUserPlus size={14} />
@@ -446,7 +515,14 @@ function ChatPageContent() {
                                         fullWidth
                                         style={{ textTransform: 'none' }}
                                     >
-                                        <Text truncate size="sm">{dm.name}</Text>
+                                        <Group justify="space-between" gap={8} style={{ width: '100%' }}>
+                                            <Text truncate size="sm">{dm.name}</Text>
+                                            {(dm.unreadCount ?? 0) > 0 && (
+                                                <Badge size="xs" color="red" variant="filled">
+                                                    {dm.unreadCount}
+                                                </Badge>
+                                            )}
+                                        </Group>
                                     </Button>
                                 ))}
 

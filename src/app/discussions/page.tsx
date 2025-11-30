@@ -7,9 +7,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
 import { IconMessage, IconPlus, IconThumbUp, IconCode, IconBrain, IconDatabase, IconDeviceDesktop, IconDeviceMobile, IconLock, IconCloud, IconServer, IconCurrencyBitcoin, IconCheck, IconEdit } from '@tabler/icons-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import { showError } from '@/lib/error-handling';
+import { showError, showSuccess } from '@/lib/error-handling';
 import { getAuthHeaders } from '@/lib/api';
 
 interface Thread {
@@ -158,7 +157,7 @@ export default function DiscussionsPage() {
             return data;
         },
         onSuccess: () => {
-            notifications.show({ color: 'green', title: 'Discussion Created', message: 'Your discussion has been posted.' });
+            showSuccess('Discussion created successfully');
             close();
             setNewThread({ title: '', content: '', category: 'GENERAL', tags: '' });
             queryClient.invalidateQueries({ queryKey: ['threads'] });
@@ -280,7 +279,7 @@ export default function DiscussionsPage() {
             return data;
         },
         onSuccess: () => {
-            notifications.show({ color: 'green', title: 'Discussion Updated', message: 'Your discussion has been updated.' });
+            showSuccess('Discussion updated successfully');
             closeEdit();
             setEditingThread(null);
             queryClient.invalidateQueries({ queryKey: ['threads'] });

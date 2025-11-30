@@ -4,10 +4,10 @@ import "./globals.css";
 import '@mantine/core/styles.css';
 import React from 'react';
 import { MantineProvider, ColorSchemeScript } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
 import { QueryProvider } from '@/components/QueryProvider';
 import { theme } from '../theme';
+import { ToastViewport } from '@/components/ToastViewport';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,10 +38,10 @@ export default function RootLayout({
       </head>
       <body>
         <MantineProvider theme={theme} defaultColorScheme="dark">
-          <Notifications position="top-right" />
           <ModalsProvider>
             <QueryProvider>
               <AuthProvider>
+                <ToastViewport />
                 {children}
               </AuthProvider>
             </QueryProvider>
