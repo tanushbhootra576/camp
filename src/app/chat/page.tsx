@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
-import { Container, Title, Paper, Tabs, ScrollArea, TextInput, ActionIcon, Group, Text, Avatar, Center, Tooltip, Badge, Menu, Button, Box, Stack, Modal, UnstyledButton } from '@mantine/core';
+import { Container, Title, Paper, ScrollArea, TextInput, ActionIcon, Group, Text, Avatar, Center, Tooltip, Badge, Menu, Button, Box, Stack, Modal, UnstyledButton, LoadingOverlay, Skeleton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
 import { IconSend, IconTrash, IconRefresh, IconMoodSmile, IconArrowBackUp, IconX, IconSticker, IconThumbUp, IconHeart, IconMoodHappy, IconMoodSurprised, IconMoodSad, IconFlame, IconSearch, IconArrowDown, IconHash, IconBuilding, IconCalendar, IconMessage, IconUserPlus, IconBan, IconDotsVertical, IconArrowLeft } from '@tabler/icons-react';
@@ -77,6 +77,8 @@ function ChatPageContent() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+    const [isConversationsLoading, setIsConversationsLoading] = useState(false);
     const viewport = useRef<HTMLDivElement>(null);
     const [autoScroll, setAutoScroll] = useState(true);
     const [onlineCount, setOnlineCount] = useState(0);
@@ -90,6 +92,11 @@ function ChatPageContent() {
     const [totalDmUnread, setTotalDmUnread] = useState(0);
     const dmUnreadSnapshot = useRef<Record<string, number>>({});
     const dmSnapshotReady = useRef(false);
+    const messagesHashRef = useRef('');
+    const conversationsHashRef = useRef('');
+    const messagesRef = useRef<Message[]>([]);
+    const recentDmsRef = useRef<ConversationSummary[]>([]);
+    const autoScrollRef = useRef(true);
     
     // New State
     const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -112,6 +119,18 @@ function ChatPageContent() {
         dmSnapshotReady.current = false;
         dmUnreadSnapshot.current = {};
     }, [profile?._id]);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
+    useEffect(() => {
+        recentDmsRef.current = recentDms;
+    }, [recentDms]);
+
+    useEffect(() => {
+        autoScrollRef.current = autoScroll;
+    }, [autoScroll]);
 
     const handleSearchUsers = async (query: string) => {
         setUserSearchQuery(query);
@@ -162,31 +181,33 @@ function ChatPageContent() {
         }
     };
 
+    const fetchConversations = useCallback(async (options?: { showSpinner?: boolean }) => {
+        if (!profile?._id) return;
+        const shouldShowSpinner = options?.showSpinner || recentDmsRef.current.length === 0;
+        if (shouldShowSpinner) setIsConversationsLoading(true);
+        try {
+            const res = await fetch(`/api/chat?type=conversations&userId=${profile._id}`, { headers: getAuthHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            setTotalDmUnread(data.totalUnread || 0);
+            const incoming = Array.isArray(data.conversations) ? data.conversations : [];
+            const hash = incoming.map((dm: any) => `${dm._id}:${dm.unreadCount ?? 0}:${dm.lastMessageAt ?? ''}`).join('|');
+            if (conversationsHashRef.current === hash) return;
+            conversationsHashRef.current = hash;
+            setRecentDms(incoming);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            if (shouldShowSpinner) setIsConversationsLoading(false);
+        }
+    }, [profile?._id]);
+
     useEffect(() => {
         if (!profile?._id) return;
-        let isMounted = true;
-
-        const fetchConversations = async () => {
-            try {
-                const res = await fetch(`/api/chat?type=conversations&userId=${profile._id}`, { headers: getAuthHeaders() });
-                if (!res.ok) return;
-                const data = await res.json();
-                if (!isMounted) return;
-                setRecentDms(Array.isArray(data.conversations) ? data.conversations : []);
-                setTotalDmUnread(data.totalUnread || 0);
-            } catch (error) {
-                console.error(error);
-            }
-        };
-
-        fetchConversations();
-        const interval = setInterval(fetchConversations, 5000);
-
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
-        };
-    }, [profile?._id]);
+        fetchConversations({ showSpinner: true });
+        const interval = setInterval(() => fetchConversations(), 5000);
+        return () => clearInterval(interval);
+    }, [profile?._id, fetchConversations]);
 
     useEffect(() => {
         if (dmRecipientId) {
@@ -204,7 +225,7 @@ function ChatPageContent() {
         }
     }, [dmRecipientId]);
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async (options?: { showSpinner?: boolean }) => {
         if (!activeTab) return;
 
         const type = activeTab;
@@ -214,6 +235,11 @@ function ChatPageContent() {
         if (type === 'branch' && !branch) return;
         if (type === 'year' && !year) return;
         if (type === 'dm' && !dmRecipientId) return;
+
+        const shouldShowSpinner = options?.showSpinner || messagesRef.current.length === 0;
+        if (shouldShowSpinner) {
+            setIsMessagesLoading(true);
+        }
 
         try {
             const query = new URLSearchParams({ type });
@@ -228,18 +254,28 @@ function ChatPageContent() {
                 setOnlineCount(data.onlineCount || 0);
                 setTotalUsers(data.totalUsers || 0);
                 setTotalMessages(data.totalMessages || 0);
-                setMessages(prev => {
-                    // Simple check to see if we have new messages to decide on scrolling
-                    if (data.messages.length > prev.length && autoScroll) {
-                        setTimeout(scrollToBottom, 100);
-                    }
-                    return data.messages;
-                });
+                const incomingMessages: Message[] = data.messages || [];
+                const payloadHash = incomingMessages.map((msg: Message) => `${msg._id}:${msg.createdAt}`).join('|');
+                if (messagesHashRef.current === payloadHash && messagesRef.current.length === incomingMessages.length) {
+                    return;
+                }
+                messagesHashRef.current = payloadHash;
+
+                const prev = messagesRef.current;
+                const shouldScroll = incomingMessages.length > prev.length && autoScrollRef.current;
+                setMessages(incomingMessages);
+                if (shouldScroll) {
+                    requestAnimationFrame(() => scrollToBottom());
+                }
             }
         } catch (error) {
             console.error('Error fetching messages:', error);
+        } finally {
+            if (shouldShowSpinner) {
+                setIsMessagesLoading(false);
+            }
         }
-    };
+    }, [activeTab, profile?.branch, profile?.year, dmRecipientId, autoScroll]);
 
     const scrollToBottom = () => {
         if (viewport.current) {
@@ -264,18 +300,18 @@ function ChatPageContent() {
     );
 
     useEffect(() => {
-        if (user && isVITStudent) {
-            fetchMessages();
-            const interval = setInterval(fetchMessages, 3000); // Poll every 3 seconds
-            return () => clearInterval(interval);
-        }
-    }, [user, activeTab, profile]);
+        if (!(user && isVITStudent)) return;
+        fetchMessages({ showSpinner: true });
+        const interval = setInterval(() => fetchMessages(), 4000);
+        return () => clearInterval(interval);
+    }, [user, isVITStudent, fetchMessages]);
 
     // Initial scroll on tab change
     useEffect(() => {
         setAutoScroll(true);
         scrollToBottom();
-    }, [activeTab]);
+        fetchMessages({ showSpinner: true });
+    }, [activeTab, fetchMessages]);
 
     useEffect(() => {
         if (recentDms.length === 0) {
@@ -437,7 +473,7 @@ function ChatPageContent() {
                                 <Group justify="space-between" mb="xs">
                                     <Text fw={700} c="dimmed" size="xs" tt="uppercase">Channels</Text>
                                     <Tooltip label="Refresh Messages">
-                                        <ActionIcon variant="subtle" color="gray" onClick={fetchMessages} size="xs">
+                                        <ActionIcon variant="subtle" color="gray" onClick={() => fetchMessages({ showSpinner: true })} size="xs">
                                             <IconRefresh size={14} />
                                         </ActionIcon>
                                     </Tooltip>
@@ -501,7 +537,11 @@ function ChatPageContent() {
                                     </Tooltip>
                                 </Group>
 
-                                {recentDms.map(dm => (
+                                {isConversationsLoading && recentDms.length === 0 ? (
+                                    Array.from({ length: 4 }).map((_, idx) => (
+                                        <Skeleton key={`dm-skeleton-${idx}`} height={36} radius="md" />
+                                    ))
+                                ) : recentDms.map(dm => (
                                     <Button 
                                         key={dm._id}
                                         variant={activeTab === 'dm' && dmRecipientId === dm._id ? 'filled' : 'subtle'} 
@@ -602,14 +642,16 @@ function ChatPageContent() {
                                 </Group>
                             </Box>
 
-                            <ScrollArea 
-                                viewportRef={viewport} 
-                                p="md" 
-                                type="always" 
-                                offsetScrollbars
-                                onScrollPositionChange={onScrollPositionChange}
-                                style={{ position: 'relative', flex: 1, minHeight: 0 }}
-                            >
+                            <Box style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+                                <LoadingOverlay visible={isMessagesLoading} zIndex={10} overlayProps={{ radius: 'sm', blur: 2 }} loaderProps={{ color: 'blue' }} />
+                                <ScrollArea 
+                                    viewportRef={viewport} 
+                                    p="md" 
+                                    type="always" 
+                                    offsetScrollbars
+                                    onScrollPositionChange={onScrollPositionChange}
+                                    style={{ flex: 1, minHeight: 0 }}
+                                >
                                 {showScrollButton && (
                                     <ActionIcon 
                                         variant="filled" 
@@ -624,7 +666,11 @@ function ChatPageContent() {
                                 )}
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: 10 }}>
-                                    {filteredMessages.map((msg) => {
+                                    {isMessagesLoading && messages.length === 0 ? (
+                                        Array.from({ length: 6 }).map((_, idx) => (
+                                            <Skeleton key={`msg-skeleton-${idx}`} height={78} radius="lg" />
+                                        ))
+                                    ) : filteredMessages.map((msg) => {
                                         const myId = String(profile?._id ?? '');
                                         const isMe = msg.senderId === myId;
                                         return (
@@ -749,13 +795,14 @@ function ChatPageContent() {
                                             </Group>
                                         );
                                     })}
-                                    {messages.length === 0 && (
+                                    {!isMessagesLoading && messages.length === 0 && (
                                         <Center h={200}>
                                             <Text c="dimmed">No messages yet. Start the conversation!</Text>
                                         </Center>
                                     )}
                                 </div>
-                            </ScrollArea>
+                                </ScrollArea>
+                            </Box>
 
                             <Box 
                                 p="md" 
