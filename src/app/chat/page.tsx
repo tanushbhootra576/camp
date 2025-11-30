@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Container, Title, Paper, ScrollArea, TextInput, ActionIcon, Group, Text, Avatar, Center, Tooltip, Badge, Menu, Button, Box, Stack, Modal, UnstyledButton, LoadingOverlay, Skeleton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
-import { IconSend, IconTrash, IconRefresh, IconMoodSmile, IconArrowBackUp, IconX, IconSticker, IconThumbUp, IconHeart, IconMoodHappy, IconMoodSurprised, IconMoodSad, IconFlame, IconSearch, IconArrowDown, IconHash, IconBuilding, IconCalendar, IconMessage, IconUserPlus, IconBan, IconDotsVertical, IconArrowLeft } from '@tabler/icons-react';
+import { IconSend, IconTrash, IconRefresh, IconMoodSmile, IconArrowBackUp, IconX, IconSticker, IconThumbUp, IconHeart, IconMoodHappy, IconMoodSurprised, IconMoodSad, IconFlame, IconSearch, IconArrowDown, IconHash, IconBuilding, IconCalendar, IconMessage, IconUserPlus, IconBan, IconDotsVertical, IconArrowLeft, IconEye, IconPinned, IconPinnedOff, IconStarFilled } from '@tabler/icons-react';
 import { showError, showSuccess, showInfo } from '@/lib/error-handling';
 import { getAuthHeaders } from '@/lib/api';
 
@@ -40,6 +40,7 @@ interface ConversationSummary {
     unreadCount?: number;
     lastMessagePreview?: string;
     lastMessageAt?: string;
+    isPinned?: boolean;
 }
 
 const REACTION_ICONS: Record<string, any> = {
@@ -97,6 +98,7 @@ function ChatPageContent() {
     const messagesRef = useRef<Message[]>([]);
     const recentDmsRef = useRef<ConversationSummary[]>([]);
     const autoScrollRef = useRef(true);
+    const pinnedCount = useMemo(() => recentDms.filter(dm => dm.isPinned).length, [recentDms]);
     
     // New State
     const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -191,7 +193,7 @@ function ChatPageContent() {
             const data = await res.json();
             setTotalDmUnread(data.totalUnread || 0);
             const incoming = Array.isArray(data.conversations) ? data.conversations : [];
-            const hash = incoming.map((dm: any) => `${dm._id}:${dm.unreadCount ?? 0}:${dm.lastMessageAt ?? ''}`).join('|');
+            const hash = incoming.map((dm: any) => `${dm._id}:${dm.unreadCount ?? 0}:${dm.lastMessageAt ?? ''}:${dm.isPinned ? 1 : 0}`).join('|');
             if (conversationsHashRef.current === hash) return;
             conversationsHashRef.current = hash;
             setRecentDms(incoming);
@@ -208,6 +210,39 @@ function ChatPageContent() {
         const interval = setInterval(() => fetchConversations(), 5000);
         return () => clearInterval(interval);
     }, [profile?._id, fetchConversations]);
+
+    const handleConversationAction = useCallback(async (targetId: string, action: 'pin' | 'unpin' | 'delete') => {
+        if (!profile?._id) return;
+        if (action === 'pin' && pinnedCount >= 3) {
+            showError({ message: 'You can pin up to 3 conversations.' }, 'Pin Limit');
+            return;
+        }
+        if (action === 'delete' && !confirm('Delete this conversation for both participants?')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/chat/preferences', {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: profile._id, targetId, action })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to update conversation');
+            }
+            showSuccess(data.message || 'Conversation updated');
+            await fetchConversations({ showSpinner: true });
+            if (action === 'delete' && dmRecipientId === targetId) {
+                router.push('/chat');
+                setActiveTab('universal');
+                setMessages([]);
+                setDmUser(null);
+            }
+        } catch (error) {
+            showError(error, 'Action Failed');
+        }
+    }, [profile?._id, pinnedCount, fetchConversations, dmRecipientId, router]);
 
     useEffect(() => {
         if (dmRecipientId) {
@@ -541,30 +576,97 @@ function ChatPageContent() {
                                     Array.from({ length: 4 }).map((_, idx) => (
                                         <Skeleton key={`dm-skeleton-${idx}`} height={36} radius="md" />
                                     ))
-                                ) : recentDms.map(dm => (
-                                    <Button 
-                                        key={dm._id}
-                                        variant={activeTab === 'dm' && dmRecipientId === dm._id ? 'filled' : 'subtle'} 
-                                        color={activeTab === 'dm' && dmRecipientId === dm._id ? 'blue' : 'gray'}
-                                        onClick={() => {
-                                            router.push(`/chat?dm=${dm._id}`);
-                                            if (isMobile) setShowSidebar(false);
-                                        }}
-                                        justify="flex-start"
-                                        leftSection={<Avatar size={16} radius="xl" src={dm.photoURL} color="blue">{dm.name?.[0]}</Avatar>}
-                                        fullWidth
-                                        style={{ textTransform: 'none' }}
-                                    >
-                                        <Group justify="space-between" gap={8} style={{ width: '100%' }}>
-                                            <Text truncate size="sm">{dm.name}</Text>
-                                            {(dm.unreadCount ?? 0) > 0 && (
-                                                <Badge size="xs" color="red" variant="filled">
-                                                    {dm.unreadCount}
-                                                </Badge>
-                                            )}
-                                        </Group>
-                                    </Button>
-                                ))}
+                                ) : recentDms.map(dm => {
+                                    const isActive = activeTab === 'dm' && dmRecipientId === dm._id;
+                                    return (
+                                        <UnstyledButton
+                                            key={dm._id}
+                                            onClick={() => {
+                                                router.push(`/chat?dm=${dm._id}`);
+                                                if (isMobile) setShowSidebar(false);
+                                            }}
+                                            onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                router.push(`/chat?dm=${dm._id}`);
+                                if (isMobile) setShowSidebar(false);
+                            }
+                        }}
+                                            style={{
+                                                width: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '0.5rem',
+                                                padding: '0.6rem 0.75rem',
+                                                borderRadius: 8,
+                                                backgroundColor: isActive ? 'var(--mantine-color-blue-filled)' : 'transparent',
+                                                color: isActive ? 'white' : 'inherit'
+                                            }}
+                                        >
+                                            <Group gap={8} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                                                <Avatar size={32} radius="xl" src={dm.photoURL} color="blue">{dm.name?.[0]}</Avatar>
+                                                <Group gap={4} wrap="nowrap" style={{ minWidth: 0 }}>
+                                                    <Text truncate size="sm" c={isActive ? 'white' : undefined}>{dm.name}</Text>
+                                                    {dm.isPinned && <IconStarFilled size={12} color="#ffd43b" />}
+                                                </Group>
+                                            </Group>
+                                            <Group gap={6} wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
+                                                {(dm.unreadCount ?? 0) > 0 && (
+                                                    <Badge size="xs" color="red" variant="filled">
+                                                        {dm.unreadCount}
+                                                    </Badge>
+                                                )}
+                                                <Menu shadow="md" position="bottom-end" withinPortal>
+                                                    <Menu.Target>
+                                                        <ActionIcon 
+                                                            variant="subtle" 
+                                                            color={isActive ? 'white' : 'gray'} 
+                                                            size="sm"
+                                                            component="div"
+                                                            role="button"
+                                                            tabIndex={0}
+                                                            onClick={(event) => event.stopPropagation()}
+                                                            aria-label="Conversation actions"
+                                                        >
+                                                            <IconDotsVertical size={14} />
+                                                        </ActionIcon>
+                                                    </Menu.Target>
+                                                    <Menu.Dropdown>
+                                                        <Menu.Item 
+                                                            leftSection={<IconEye size={14} />}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                router.push(`/users/${dm._id}`);
+                                                            }}
+                                                        >
+                                                            View Profile
+                                                        </Menu.Item>
+                                                        <Menu.Item 
+                                                            leftSection={dm.isPinned ? <IconPinnedOff size={14} /> : <IconPinned size={14} />}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleConversationAction(dm._id, dm.isPinned ? 'unpin' : 'pin');
+                                                            }}
+                                                        >
+                                                            {dm.isPinned ? 'Unpin' : 'Pin'} Conversation
+                                                        </Menu.Item>
+                                                        <Menu.Item 
+                                                            color="red"
+                                                            leftSection={<IconTrash size={14} />}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleConversationAction(dm._id, 'delete');
+                                                            }}
+                                                        >
+                                                            Delete Conversation
+                                                        </Menu.Item>
+                                                    </Menu.Dropdown>
+                                                </Menu>
+                                            </Group>
+                                        </UnstyledButton>
+                                    );
+                                })}
 
                                 {dmRecipientId && !recentDms.find(d => d._id === dmRecipientId) && (
                                     <Button 

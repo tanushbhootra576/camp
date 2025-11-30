@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
             }
             const userObjectId = new Types.ObjectId(userId);
-            const currentUser = await User.findById(userId).select('dmLastRead');
+            const currentUser = await User.findById(userId).select('dmLastRead pinnedDms');
 
             const lastReadMap = new Map<string, Date>();
             const dmLastRead: any = currentUser?.dmLastRead;
@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
                 .select('name _id firebaseUid photoURL');
 
             const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+            const pinnedList = (currentUser?.pinnedDms || []).map((id: any) => String(id));
+            const pinnedSet = new Set(pinnedList);
 
             const unreadMessages = await Message.find({
                 type: 'dm',
@@ -107,6 +109,7 @@ export async function GET(req: NextRequest) {
                     if (!otherId) return null;
                     const userDetails: any = userMap.get(otherId);
                     const lastMessage = doc.lastMessage;
+                    const lastMessageAt = lastMessage?.createdAt ? new Date(lastMessage.createdAt).toISOString() : null;
                     return {
                         _id: otherId,
                         name: userDetails?.name || 'Unknown',
@@ -114,10 +117,22 @@ export async function GET(req: NextRequest) {
                         firebaseUid: userDetails?.firebaseUid,
                         unreadCount: unreadCountMap[otherId] || 0,
                         lastMessagePreview: lastMessage?.sticker ? '🖼 Sticker' : (lastMessage?.content || ''),
-                        lastMessageAt: lastMessage?.createdAt
+                        lastMessageAt,
+                        isPinned: pinnedSet.has(otherId)
                     };
                 })
                 .filter(Boolean);
+
+            conversations.sort((a: any, b: any) => {
+                if (a.isPinned && b.isPinned) {
+                    return pinnedList.indexOf(a._id) - pinnedList.indexOf(b._id);
+                }
+                if (a.isPinned) return -1;
+                if (b.isPinned) return 1;
+                const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+                const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+                return bTime - aTime;
+            });
 
             const totalUnread = conversations.reduce((sum, conv: any) => sum + (conv.unreadCount || 0), 0);
 

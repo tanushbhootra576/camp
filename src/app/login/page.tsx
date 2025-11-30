@@ -4,15 +4,15 @@ import { useState, useEffect } from 'react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Button, Paper, Title, Container, Text, Notification, Modal, List, ThemeIcon, Group, Checkbox, Loader, Center } from '@mantine/core';
+import { Button, Paper, Title, Container, Text, Modal, List, ThemeIcon, Group, Checkbox, Loader, Center } from '@mantine/core';
 import { Navbar } from '@/components/Navbar';
-import { IconBrandGoogle, IconX, IconCheck, IconInfoCircle } from '@tabler/icons-react';
+import { IconBrandGoogle, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { useAuth } from '@/components/AuthProvider';
 import { getAuthHeaders } from '@/lib/api';
+import { showError } from '@/lib/error-handling';
 
 export default function LoginPage() {
-    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [guidelinesOpened, { open: openGuidelines, close: closeGuidelines }] = useDisclosure(false);
     const [pendingUid, setPendingUid] = useState<string | null>(null);
@@ -34,7 +34,6 @@ export default function LoginPage() {
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
-        setError('');
         try {
             const provider = new GoogleAuthProvider();
             const result = await signInWithPopup(auth, provider);
@@ -42,7 +41,7 @@ export default function LoginPage() {
             const email = result.user.email;
             if (!email || !email.endsWith('@vitstudent.ac.in')) {
                 await auth.signOut();
-                setError('Access restricted to @vitstudent.ac.in emails only.');
+                showError({ message: 'Access restricted to @vitstudent.ac.in emails only.' }, 'Login Blocked');
                 setLoading(false);
                 return;
             }
@@ -73,7 +72,7 @@ export default function LoginPage() {
                 router.push('/');
             }
         } catch (err: any) {
-            setError('Failed to log in with Google.');
+            showError({ message: 'Failed to log in with Google.' }, 'Login Failed');
             console.error(err);
             setLoading(false);
         }
@@ -95,7 +94,7 @@ export default function LoginPage() {
             router.push('/');
         } catch (err) {
             console.error('Failed to accept guidelines', err);
-            setError('Failed to process acceptance. Please try again.');
+            showError({ message: 'Failed to process acceptance. Please try again.' }, 'Guidelines');
             setLoading(false);
         }
     };
@@ -121,12 +120,6 @@ export default function LoginPage() {
                     <Title order={2} ta="center" mt="md" mb={50}>
                         Welcome back to Campus Connect
                     </Title>
-
-                    {error && (
-                        <Notification icon={<IconX size={18} />} color="red" onClose={() => setError('')} mb="md">
-                            {error}
-                        </Notification>
-                    )}
 
                     <Text c="dimmed" size="sm" ta="center" mb="md">
                         Please sign in with your VIT student email (@vitstudent.ac.in)

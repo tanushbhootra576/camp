@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { Container, Title, TextInput, Textarea, Button, Group, Paper, Avatar, SimpleGrid, TagsInput, NumberInput, LoadingOverlay, Text, Notification, Modal, Badge, Card, Divider, ActionIcon, Tooltip, Select } from '@mantine/core';
+import { Container, Title, TextInput, Textarea, Button, Group, Paper, Avatar, SimpleGrid, TagsInput, NumberInput, LoadingOverlay, Text, Modal, Badge, Card, Divider, ActionIcon, Tooltip, Select } from '@mantine/core';
 import { useAuth } from '@/components/AuthProvider';
 import { IconDeviceFloppy, IconCheck, IconX, IconTrash, IconRefresh } from '@tabler/icons-react';
 import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
-import { showError } from '@/lib/error-handling';
+import { showError, showSuccess } from '@/lib/error-handling';
 import { getAuthHeaders } from '@/lib/api';
 
 interface Project {
@@ -37,7 +37,6 @@ interface UserResult {
 export default function ProfilePage() {
     const { user, profile, refreshProfile } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -79,7 +78,6 @@ export default function ProfilePage() {
         }
 
         setLoading(true);
-        setNotification(null);
         try {
             const res = await fetch(`/api/users/${user.uid}`, {
                 method: 'PUT',
@@ -104,7 +102,7 @@ export default function ProfilePage() {
 
             if (res.ok) {
                 await refreshProfile();
-                setNotification({ type: 'success', message: 'Profile updated successfully!' });
+                showSuccess('Profile updated successfully!');
             } else {
                 const data = await res.json();
                 showError({ message: data.error || 'Failed to update profile.' }, 'Update Failed');
@@ -181,10 +179,10 @@ export default function ProfilePage() {
             });
             if (res.ok) {
                 setMySkills(prev => prev.map(s => s._id === skillId ? { ...s, status: newStatus as 'OPEN' | 'CLOSED' } : s));
-                setNotification({ type: 'success', message: `Skill marked as ${newStatus === 'CLOSED' ? 'completed' : 'open'}` });
+                showSuccess(`Skill marked as ${newStatus === 'CLOSED' ? 'completed' : 'open'}`);
             }
         } catch {
-            setNotification({ type: 'error', message: 'Failed to update skill status' });
+            showError({ message: 'Failed to update skill status' }, 'Update Failed');
         }
     };
 
@@ -197,10 +195,10 @@ export default function ProfilePage() {
             });
             if (res.ok) {
                 setMySkills(prev => prev.filter(s => s._id !== skillId));
-                setNotification({ type: 'success', message: 'Skill deleted' });
+                showSuccess('Skill deleted');
             }
         } catch {
-            setNotification({ type: 'error', message: 'Failed to delete skill' });
+            showError({ message: 'Failed to delete skill' }, 'Delete Failed');
         }
     };
 
@@ -249,7 +247,7 @@ export default function ProfilePage() {
             const data = await res.json();
             if (res.ok && data.project) {
                 setMyProjects(prev => prev.map(p => p._id === data.project._id ? data.project : p));
-                setNotification({ type: 'success', message: 'Project updated.' });
+                showSuccess('Project updated.');
                 setEditProjectModal({ open: false, project: null });
             } else {
                 showError({ message: data.error || 'Failed to update project.' }, 'Update Failed');
@@ -328,7 +326,7 @@ export default function ProfilePage() {
             const err = error as { code?: string; message?: string };
 
             if (err.code === 'auth/requires-recent-login') {
-                setNotification({ type: 'error', message: 'Security check: Please sign in again to confirm deletion.' });
+                showError({ message: 'Security check: Please sign in again to confirm deletion.' }, 'Delete Failed');
                 try {
                     // Attempt re-authentication
                     const provider = new GoogleAuthProvider();
@@ -338,16 +336,10 @@ export default function ProfilePage() {
                     return;
                 } catch (reauthError) {
                     console.error('Re-authentication failed:', reauthError);
-                    setNotification({ 
-                        type: 'error', 
-                        message: 'Security check failed. Account was not deleted.' 
-                    });
+                    showError({ message: 'Security check failed. Account was not deleted.' }, 'Delete Failed');
                 }
             } else {
-                setNotification({ 
-                    type: 'error', 
-                    message: err.message || 'Failed to delete account.' 
-                });
+                showError({ message: err.message || 'Failed to delete account.' }, 'Delete Failed');
             }
             setLoading(false);
             setDeleteModalOpen(false);
@@ -371,18 +363,6 @@ export default function ProfilePage() {
             <Navbar />
             <Container size="md" py="xl">
                 <Title mb="xl">Your Profile</Title>
-
-                {notification && (
-                    <Notification
-                        icon={notification.type === 'success' ? <IconCheck size={18} /> : <IconX size={18} />}
-                        color={notification.type === 'success' ? 'teal' : 'red'}
-                        title={notification.type === 'success' ? 'Success' : 'Error'}
-                        onClose={() => setNotification(null)}
-                        mb="md"
-                    >
-                        {notification.message}
-                    </Notification>
-                )}
 
                 <Paper withBorder shadow="sm" p="xl" radius="md" pos="relative">
                     <LoadingOverlay visible={loading} />
