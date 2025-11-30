@@ -1,55 +1,208 @@
-## Campus Connect
+# Campus Connect
 
-Campus Connect is a Next.js application for students to discover peers, collaborate on projects, and chat through public channels or direct messages. The platform now sports an upgraded profile experience plus real-time and browser-level notifications so conversations never get missed.
+[![Next.js](https://img.shields.io/badge/Next.js-16.0.3-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Mantine](https://img.shields.io/badge/Mantine-8.3.8-blue)](https://mantine.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-12.6.0-orange)](https://firebase.google.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-green)](https://mongoosejs.com/)
 
-### Key Features
+Campus Connect is a comprehensive Next.js-based platform designed to foster collaboration and communication among students. It provides a seamless environment for discovering peers, collaborating on projects, participating in discussions, and engaging in real-time chat through public channels or direct messages. The application features an enhanced user experience with rich profiles, instant notifications, and robust moderation tools to ensure a safe and productive community.
 
-- **Rich student profiles** – Gradient cards with skill and interest pills, quick DM and email actions, and prominent social links help surface talent at a glance.
-- **Instant contact flows** – Every contact modal includes a Direct Message shortcut that deep links into `/chat?dm=<uid>` for one-click outreach.
-- **Browser DM notifications** – When you enable notifications, direct messages trigger native alerts on desktop and mobile browsers in addition to in-app toasts.
-- **Channel and DM chat** – Universal, branch, year, and private threads share the same polished UI with reactions, stickers, replies, and moderation safeguards.
-- **Role-aware directory** – Search and filter students by name, branch, or skill with pagination and lightweight loading states.
+## Features
 
-### Tech Stack
+### Core Functionality
+- **User Authentication**: Secure login and signup using Firebase Authentication.
+- **User Profiles**: Detailed profiles with skills, interests, social links, and direct messaging capabilities.
+- **Real-Time Chat**: Support for public channels, direct messages, reactions, stickers, replies, and moderation.
+- **Notifications**: Browser-level notifications for direct messages, in addition to in-app toasts.
+- **User Directory**: Searchable and filterable list of users by name, branch, skills, with pagination.
 
-- Next.js App Router with TypeScript
-- Mantine UI for layout primitives and modals
-- React Toastify for global notifications
-- Firebase Auth plus custom API routes backed by MongoDB/Mongoose
+### Collaboration Tools
+- **Projects**: Create and manage collaborative projects, connect with team members.
+- **Discussions**: Engage in threaded discussions on various topics.
+- **Events**: Organize and participate in campus events.
+- **Quizzes**: Take and create quizzes for educational purposes.
+- **Resources**: Share and access educational resources.
+- **Skills**: List and discover skills offered by users.
 
-## Getting Started
+### Administrative Features
+- **Moderation**: Built-in toxicity detection, profanity filtering, and content moderation using libraries like `leo-profanity` and `bad-words`.
+- **Reports**: Report inappropriate content or users.
+- **User Management**: Block users, manage user roles.
+- **Statistics**: View platform statistics and analytics.
+- **Debug and Testing**: API endpoints for debugging, testing, and health checks.
 
-Install dependencies and run the development server:
+### Additional Capabilities
+- **Screenshot Generation**: Automated screenshot capabilities using Puppeteer.
+- **File Drive**: Manage files and documents.
+- **Seed Data**: Populate the database with initial data.
+- **Force Repair**: Administrative tools for data repair.
 
-```bash
-npm install
-npm run dev
-```
+## Tech Stack
 
-Open [http://localhost:3000](http://localhost:3000) to view the app. Environment variables for Firebase, MongoDB, and any third-party APIs should be placed in `.env.local`.
+- **Frontend**: Next.js 16 with App Router, TypeScript, Mantine UI, React Toastify
+- **Backend**: Next.js API Routes, MongoDB with Mongoose
+- **Authentication**: Firebase Auth and Firebase Admin SDK
+- **Real-Time Communication**: Socket.io for chat
+- **Styling**: PostCSS with Mantine presets
+- **Icons**: Tabler Icons, Lucide React
+- **Moderation**: Leo Profanity, Bad Words libraries
+- **Automation**: Puppeteer for browser automation
 
-## Available Scripts
+## Prerequisites
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Starts the Next.js dev server with hot reload. |
-| `npm run build` | Creates an optimized production build. |
-| `npm start` | Serves the production build. |
-| `npm run lint` | Runs ESLint across the project. |
+Before running the application, ensure you have the following installed:
 
-## Browser Notifications for DMs
+- **Node.js**: Version 18 or higher
+- **MongoDB**: A running MongoDB instance (local or cloud)
+- **Firebase Project**: Set up a Firebase project with Authentication enabled
 
-1. Open the chat sidebar and click the bell icon beside **Direct Messages**.
-2. Allow notifications in the browser prompt.
-3. When the page is hidden or another conversation is active, new DM messages trigger native alerts plus the existing toast notification.
+## Installation
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/tanushbhootra576/camp.git
+   cd camp
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**:
+   Create a `.env.local` file in the root directory and add the following variables:
+   ```env
+   # Firebase Configuration
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+   # MongoDB
+   MONGODB_URI=mongodb://localhost:27017/campus-connect
+
+   # Other configurations (if any)
+   ```
+
+4. **Database Setup**:
+   Ensure MongoDB is running and accessible. You can seed initial data using the `/api/seed` endpoint.
+
+## Usage
+
+1. **Development Server**:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+2. **Build for Production**:
+   ```bash
+   npm run build
+   npm start
+   ```
+
+3. **Linting**:
+   ```bash
+   npm run lint
+   ```
+
+## API Endpoints
+
+The application includes various API routes for backend functionality:
+
+- `/api/chat`: Chat-related operations
+- `/api/users`: User management
+- `/api/projects`: Project collaboration
+- `/api/discussions`: Discussion threads
+- `/api/events`: Event management
+- `/api/quizzes`: Quiz functionality
+- `/api/resources`: Resource sharing
+- `/api/skills`: Skill listings
+- `/api/reports`: Reporting system
+- `/api/moderation`: Content moderation
+- `/api/stats`: Platform statistics
+- `/api/health`: Health checks
+- `/api/seed`: Database seeding
+
+For detailed API documentation, refer to the individual route files in `src/app/api/`.
+
+## Browser Notifications
+
+To enable browser notifications for direct messages:
+
+1. Navigate to the chat section.
+2. Click the bell icon next to "Direct Messages".
+3. Allow notifications in the browser prompt.
+4. Receive native alerts even when the page is not active.
 
 ## Deployment
 
-The project deploys cleanly on Vercel. Run `npm run build` locally before pushing to confirm there are no type or lint errors.
+The application is optimized for deployment on Vercel:
+
+1. Push your code to a Git repository.
+2. Connect the repository to Vercel.
+3. Set environment variables in Vercel dashboard.
+4. Deploy automatically on push to main branch.
+
+Ensure `npm run build` passes locally before deployment.
+
+## Project Structure
+
+```
+camp/
+├── public/                 # Static assets
+├── src/
+│   ├── app/                # Next.js App Router
+│   │   ├── api/            # API routes
+│   │   ├── chat/           # Chat page
+│   │   ├── discussions/    # Discussions page
+│   │   ├── events/         # Events page
+│   │   ├── login/          # Login page
+│   │   ├── profile/        # Profile page
+│   │   ├── projects/       # Projects page
+│   │   ├── quizzes/        # Quizzes page
+│   │   ├── resources/      # Resources page
+│   │   ├── signup/         # Signup page
+│   │   ├── skills/         # Skills page
+│   │   └── users/          # Users directory
+│   ├── blocklists/         # Moderation word lists
+│   ├── components/         # Reusable React components
+│   ├── lib/                # Utility libraries
+│   ├── models/             # Mongoose models
+│   └── types/              # TypeScript type definitions
+├── eslint.config.mjs       # ESLint configuration
+├── next.config.ts          # Next.js configuration
+├── package.json            # Dependencies and scripts
+├── postcss.config.mjs      # PostCSS configuration
+├── tsconfig.json           # TypeScript configuration
+└── vercel.json             # Vercel deployment config
+```
 
 ## Contributing
 
-1. Fork and clone the repository.
+We welcome contributions to Campus Connect!
+
+1. Fork the repository.
 2. Create a feature branch from `main`.
-3. Run `npm run lint` and `npm run build` before opening a pull request.
-4. Describe UI changes with screenshots or screen recordings when possible.
+3. Make your changes and ensure `npm run lint` and `npm run build` pass.
+4. Test your changes thoroughly.
+5. Submit a pull request with a clear description of the changes.
+6. Include screenshots or recordings for UI changes.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Authors
+
+- **Tanush Bhootra** - *Initial work* - [tanushbhootra576](https://github.com/tanushbhootra576)
+
+## Acknowledgments
+
+- Thanks to the Next.js team for the excellent framework.
+- Mantine UI for beautiful and accessible components.
+- Firebase for robust authentication and backend services.
+- All contributors and the open-source community.
