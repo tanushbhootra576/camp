@@ -875,7 +875,7 @@ function ChatPageContent() {
                                     onScrollPositionChange={onScrollPositionChange}
                                     style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                                 >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: 10, paddingBottom: 100 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: 10, paddingBottom: 0 }}>
                                     {isMessagesLoading && messages.length === 0 ? (
                                         Array.from({ length: 6 }).map((_, idx) => (
                                             <Skeleton key={`msg-skeleton-${idx}`} height={78} radius="lg" />
@@ -1036,7 +1036,7 @@ function ChatPageContent() {
                                             justifyContent: 'space-between', 
                                             alignItems: 'center',
                                             borderLeft: '4px solid #228be6',
-                                            backgroundColor: isDark ? 'var(--mantine-color-dark-7)' : 'white'
+                                            backgroundColor: isDark ? 'var(--mantine-color-body)' : 'white'
                                         }}
                                     >
                                         <Box>

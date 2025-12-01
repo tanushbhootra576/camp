@@ -2,6 +2,11 @@
   /* Mantine handles colors, but we can define global overrides if needed */
 }
 
+[data-mantine-color-scheme="dark"] body {
+  background-color: #000000;
+  --mantine-color-body: #000000;
+}
+
 html,
 body {
   max-width: 100vw;
