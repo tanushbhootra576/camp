@@ -179,9 +179,9 @@ export function Navbar() {
                   <Button variant="default" component={Link} href="/login">
                     Log in
                   </Button>
-                  <Button component={Link} href="/signup">
+                  {/* <Button component={Link} href="/signup">
                     Sign up
-                  </Button>
+                  </Button> */}
                 </>
               )}
             </Group>
