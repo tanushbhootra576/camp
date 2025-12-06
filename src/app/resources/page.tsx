@@ -55,7 +55,7 @@ interface SubjectResource {
 }
 
 export default function ResourcesPage() {
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [resources, setResources] = useState<SubjectResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -73,7 +73,6 @@ export default function ResourcesPage() {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewTitle, setPreviewTitle] = useState<string>('');
 
-  const { profile } = useAuth();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadForm, setUploadForm] = useState({
@@ -204,6 +203,29 @@ export default function ResourcesPage() {
       setPreviewTitle(title);
       openPreview();
   };
+
+  if (authLoading) {
+      return (
+          <>
+              <Navbar />
+              <Center h="calc(100vh - 60px)"><Loader /></Center>
+          </>
+      );
+  }
+
+  if (profile?.role !== 'admin') {
+      return (
+        <>
+          <Navbar />
+          <Container size="lg" py="xl">
+            <div style={{ textAlign: 'center', marginTop: '100px' }}>
+              <Title order={2} mb="md">Resources</Title>
+              <Text size="xl" c="dimmed">Coming Soon</Text>
+            </div>
+          </Container>
+        </>
+      );
+  }
 
   return (
     <>

@@ -1,11 +1,11 @@
 ## Campus Connect
 
-
 Campus Connect is a comprehensive Next.js-based platform designed to foster collaboration and communication among students. It provides a seamless environment for discovering peers, collaborating on projects, participating in discussions, and engaging in real-time chat through public channels or direct messages. The application features an enhanced user experience with rich profiles, instant notifications, and robust moderation tools to ensure a safe and productive community.
 
 ## Features
 
 ### Core Functionality
+
 - **User Authentication**: Secure login and signup using Firebase Authentication.
 - **User Profiles**: Detailed profiles with skills, interests, social links, and direct messaging capabilities.
 - **Real-Time Chat**: Support for public channels, direct messages, reactions, stickers, replies, and moderation.
@@ -13,14 +13,16 @@ Campus Connect is a comprehensive Next.js-based platform designed to foster coll
 - **User Directory**: Searchable and filterable list of users by name, branch, skills, with pagination.
 
 ### Collaboration Tools
+
 - **Projects**: Create and manage collaborative projects, connect with team members.
 - **Discussions**: Engage in threaded discussions on various topics.
 - **Events**: Organize and participate in campus events.
 - **Quizzes**: Take and create quizzes for educational purposes.
-- **Resources**: Share and access educational resources.
+<!-- - **Resources**: Share and access educational resources. -->
 - **Skills**: List and discover skills offered by users.
 
 ### Administrative Features
+
 - **Moderation**: Built-in toxicity detection, profanity filtering, and content moderation using libraries like `leo-profanity` and `bad-words`.
 - **Reports**: Report inappropriate content or users.
 - **User Management**: Block users, manage user roles.
@@ -28,6 +30,7 @@ Campus Connect is a comprehensive Next.js-based platform designed to foster coll
 - **Debug and Testing**: API endpoints for debugging, testing, and health checks.
 
 ### Additional Capabilities
+
 - **Screenshot Generation**: Automated screenshot capabilities using Puppeteer.
 - **File Drive**: Manage files and documents.
 - **Seed Data**: Populate the database with initial data.
@@ -55,18 +58,21 @@ Before running the application, ensure you have the following installed:
 ## Installation
 
 1. **Clone the Repository**:
+
    ```bash
    git clone https://github.com/tanushbhootra576/camp.git
    cd camp
    ```
 
 2. **Install Dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**:
    Create a `.env.local` file in the root directory and add the following variables:
+
    ```env
    # Firebase Configuration
    NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
@@ -88,12 +94,15 @@ Before running the application, ensure you have the following installed:
 ## Usage
 
 1. **Development Server**:
+
    ```bash
    npm run dev
    ```
+
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 2. **Build for Production**:
+
    ```bash
    npm run build
    npm start
@@ -114,7 +123,7 @@ The application includes various API routes for backend functionality:
 - `/api/discussions`: Discussion threads
 - `/api/events`: Event management
 - `/api/quizzes`: Quiz functionality
-- `/api/resources`: Resource sharing
+<!-- - `/api/resources`: Resource sharing -->
 - `/api/skills`: Skill listings
 - `/api/reports`: Reporting system
 - `/api/moderation`: Content moderation
@@ -159,7 +168,7 @@ camp/
 │   │   ├── profile/        # Profile page
 │   │   ├── projects/       # Projects page
 │   │   ├── quizzes/        # Quizzes page
-│   │   ├── resources/      # Resources page
+<!-- │   │   ├── resources/      # Resources page -->
 │   │   ├── signup/         # Signup page
 │   │   ├── skills/         # Skills page
 │   │   └── users/          # Users directory
@@ -186,8 +195,6 @@ We welcome contributions to Campus Connect!
 4. Test your changes thoroughly.
 5. Submit a pull request with a clear description of the changes.
 6. Include screenshots or recordings for UI changes.
-
-
 
 ### ✨ Developed by Tanush Bhootra
 
